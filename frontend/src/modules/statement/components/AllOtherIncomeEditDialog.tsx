@@ -783,7 +783,7 @@ export function AllOtherIncomeEditDialog({
                   onChange={(e) =>
                     handleNumberInput('paymentAmount', e.target.value)
                   }
-                  onBlur={(e) => {
+                  onBlur={() => {
                     field.onBlur();
                     clearErrors('paymentAmount');
                   }}
@@ -812,7 +812,7 @@ export function AllOtherIncomeEditDialog({
                   onChange={(e) =>
                     handleNumberInput('necessaryExpenses', e.target.value)
                   }
-                  onBlur={(e) => {
+                  onBlur={() => {
                     field.onBlur();
                     clearErrors('necessaryExpenses');
                   }}

@@ -9,7 +9,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
-import { toast } from '@/shared/hooks/use-toast';
+// import { toast } from '@/shared/hooks/use-toast';
 import type {
   StatementCreationFormData,
   StatementCreationSummary,
@@ -45,11 +45,11 @@ const initialFormData: StatementCreationFormData = {
 export function OtherIncomeStatementDialog({
   open,
   onOpenChange,
-  year,
-  month,
+  year: _year,
+  month: _month,
   summary,
   targetIds,
-  targetType,
+  targetType: _targetType,
   onSuccess,
 }: OtherIncomeStatementDialogProps): JSX.Element {
   const [formData, setFormData] = useState<StatementCreationFormData>(initialFormData);
@@ -262,8 +262,8 @@ export function OtherIncomeStatementDialog({
 
   // 신고파일 최종생성일 업데이트 (LocalStorage)
   const updateReportFileGeneratedAt = (
-    year: number,
-    month: number,
+    _year: number,
+    _month: number,
     targetIds: string[],
     generatedAt: string
   ): void => {

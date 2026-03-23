@@ -195,8 +195,6 @@ export function AllOtherIncome(): JSX.Element {
           data={data?.data ?? []}
           onRowClick={handleRowClick}
           pageSize={30}
-          selectedRows={selectedRows}
-          onSelectedRowsChange={setSelectedRows}
         />
       </div>
     </>

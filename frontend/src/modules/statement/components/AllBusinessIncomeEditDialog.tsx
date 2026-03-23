@@ -316,10 +316,10 @@ export function AllBusinessIncomeEditDialog({
     return Object.values(errors).some((error) => error !== '');
   };
 
-  // 전체 에러 확인
-  const hasAnyErrors = (): boolean => {
-    return Object.keys(tabErrors).some((tabIndex) => hasTabErrors(Number(tabIndex)));
-  };
+  // 전체 에러 확인 (현재 사용되지 않지만 향후 사용 가능)
+  // const hasAnyErrors = (): boolean => {
+  //   return Object.keys(tabErrors).some((tabIndex) => hasTabErrors(Number(tabIndex)));
+  // };
 
   // 변경 여부 확인 (전체)
   const hasChanges = (): boolean => {
@@ -497,41 +497,41 @@ export function AllBusinessIncomeEditDialog({
     }
   };
 
-  // 일괄 검증
-  const validateAllTabs = (): { isValid: boolean; firstErrorTab: number | null } => {
-    const newTabErrors: Record<string, Record<string, string>> = {};
-    let firstErrorTab: number | null = null;
-
-    formsData.forEach((formData, tabIndex) => {
-      const errors: Record<string, string> = {};
-
-      Object.keys(formData).forEach((field) => {
-        const error = validateField(
-          tabIndex,
-          field,
-          formData[field as keyof FormData]
-        );
-        if (error) errors[field] = error;
-      });
-
-      // 귀속연월 검증
-      const dateError = validateField(tabIndex, 'attributionDate', null);
-      if (dateError) errors.attributionDate = dateError;
-
-      if (Object.keys(errors).length > 0) {
-        newTabErrors[tabIndex.toString()] = errors;
-        if (firstErrorTab === null) {
-          firstErrorTab = tabIndex;
-        }
-      }
-    });
-
-    setTabErrors(newTabErrors);
-    return {
-      isValid: Object.keys(newTabErrors).length === 0,
-      firstErrorTab,
-    };
-  };
+  // 일괄 검증 (현재 사용되지 않지만 향후 사용 가능)
+  // const validateAllTabs = (): { isValid: boolean; firstErrorTab: number | null } => {
+  //   const newTabErrors: Record<string, Record<string, string>> = {};
+  //   let firstErrorTab: number | null = null;
+  //
+  //   formsData.forEach((formData, tabIndex) => {
+  //     const errors: Record<string, string> = {};
+  //
+  //     Object.keys(formData).forEach((field) => {
+  //       const error = validateField(
+  //         tabIndex,
+  //         field,
+  //         formData[field as keyof FormData]
+  //       );
+  //       if (error) errors[field] = error;
+  //     });
+  //
+  //     // 귀속연월 검증
+  //     const dateError = validateField(tabIndex, 'attributionDate', null);
+  //     if (dateError) errors.attributionDate = dateError;
+  //
+  //     if (Object.keys(errors).length > 0) {
+  //       newTabErrors[tabIndex.toString()] = errors;
+  //       if (firstErrorTab === null) {
+  //         firstErrorTab = tabIndex;
+  //       }
+  //     }
+  //   });
+  //
+  //   setTabErrors(newTabErrors);
+  //   return {
+  //     isValid: Object.keys(newTabErrors).length === 0,
+  //     firstErrorTab,
+  //   };
+  // };
 
   // 현재 탭만 저장
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
@@ -621,18 +621,6 @@ export function AllBusinessIncomeEditDialog({
     >
       <DialogContent
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
-        onEscapeKeyDown={(e) => {
-          e.preventDefault();
-          handleClose();
-        }}
-        onPointerDownOutside={(e) => {
-          e.preventDefault();
-          handleClose();
-        }}
-        onInteractOutside={(e) => {
-          e.preventDefault();
-          handleClose();
-        }}
       >
         <DialogHeader>
           <DialogTitle>사업소득 수정</DialogTitle>

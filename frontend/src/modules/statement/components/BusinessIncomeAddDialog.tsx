@@ -430,18 +430,6 @@ export function BusinessIncomeAddDialog({
     >
       <DialogContent
         className="max-w-2xl"
-        onEscapeKeyDown={(e) => {
-          e.preventDefault();
-          handleClose();
-        }}
-        onPointerDownOutside={(e) => {
-          e.preventDefault();
-          handleClose();
-        }}
-        onInteractOutside={(e) => {
-          e.preventDefault();
-          handleClose();
-        }}
       >
         <DialogHeader>
           <DialogTitle>사업소득 추가</DialogTitle>

@@ -68,7 +68,7 @@ export function LNB({ menuItems, currentPath, onNavigate }: LNBProps): JSX.Eleme
 
   const isActive = (path: string): boolean => {
     // 쿼리 파라미터를 제거하고 경로만 비교
-    const currentPathWithoutQuery = currentPath.split('?')[0];
+    const currentPathWithoutQuery = currentPath.split('?')[0] || '/';
     return currentPathWithoutQuery === path || currentPathWithoutQuery.startsWith(path + '/');
   };
 

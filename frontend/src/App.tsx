@@ -29,7 +29,7 @@ export function App(): JSX.Element {
 
   const renderPage = (): JSX.Element => {
     // pathname만 추출 (query string 제거)
-    const pathname = currentPath.split('?')[0];
+    const pathname = currentPath.split('?')[0] || '/';
 
     // 사업소득 - 월별목록 (사업소득 합산 화면 포함)
     if (
