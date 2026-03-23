@@ -45,8 +45,8 @@ const initialFormData: StatementCreationFormData = {
 export function BusinessIncomeStatementDialog({
   open,
   onOpenChange,
-  year: _year,
-  month: _month,
+  year,
+  month,
   summary,
   targetIds,
   targetType: _targetType,
@@ -262,8 +262,8 @@ export function BusinessIncomeStatementDialog({
 
   // 신고파일 최종생성일 업데이트 (LocalStorage)
   const updateReportFileGeneratedAt = (
-    _year: number,
-    _month: number,
+    year: number,
+    month: number,
     targetIds: string[],
     generatedAt: string
   ): void => {
