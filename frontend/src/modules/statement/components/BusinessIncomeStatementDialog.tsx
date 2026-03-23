@@ -262,8 +262,8 @@ export function BusinessIncomeStatementDialog({
 
   // 신고파일 최종생성일 업데이트 (LocalStorage)
   const updateReportFileGeneratedAt = (
-    year: number,
-    month: number,
+    _year: number,
+    _month: number,
     targetIds: string[],
     generatedAt: string
   ): void => {
