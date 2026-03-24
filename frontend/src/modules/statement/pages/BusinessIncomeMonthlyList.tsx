@@ -215,10 +215,7 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
   const handleCreateStatementSelected = (): void => {
     // 선택된 대상자가 없으면 경고
     if (selectedIds.length === 0) {
-      toast({
-        title: '선택된 대상자가 없습니다. 목록 내 좌측 대상자를 선택해주세요.',
-        variant: 'destructive',
-      });
+      alert('선택된 대상자가 없습니다. 목록 내 좌측 대상자를 선택해주세요.');
       return;
     }
 
@@ -396,9 +393,8 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
         </div>
 
         <div className="mb-2 text-sm text-gray-600">
-          ※ 간이지급명세서 신고파일 생성 후 신고파일 데이터에서 값이 수정된 대상자
-          또는 추가된 대상자는 상단 '상세검색'을 통해 검색 후 간이지급명세서 개별
-          생성이 가능합니다.
+          ※ 간이지급명세서 신고 후 데이터가 수정되거나 추가된 대상자는 좌측
+          체크박스에서 체크 후 간이지급명세서 개별 생성을 진행해주세요.
         </div>
 
         <div className="flex justify-between items-center mb-4">
