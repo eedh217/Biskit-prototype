@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { LNB } from './LNB';
 
@@ -59,14 +59,71 @@ const STATEMENT_MENU_ITEMS: MenuItem[] = [
   },
 ];
 
+// 인사 메뉴 구조
+const HR_MENU_ITEMS: MenuItem[] = [
+  {
+    id: 'employee',
+    label: '직원관리',
+    path: '/hr/employee',
+    children: [],
+  },
+  {
+    id: 'organization',
+    label: '조직관리',
+    path: '/hr/organization',
+    children: [
+      {
+        id: 'organization-department',
+        label: '부서',
+        path: '/hr/organization/department',
+      },
+      {
+        id: 'organization-position',
+        label: '직급',
+        path: '/hr/organization/position',
+      },
+      {
+        id: 'organization-employment-type',
+        label: '근로형태',
+        path: '/hr/organization/employment-type',
+      },
+    ],
+  },
+  {
+    id: 'leave',
+    label: '연차/휴가관리',
+    path: '/hr/leave',
+    children: [],
+  },
+  {
+    id: 'attendance',
+    label: '근태관리',
+    path: '/hr/attendance',
+    children: [],
+  },
+];
+
 export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProps): JSX.Element {
   const [selectedModule, setSelectedModule] = useState<string>('statement');
+
+  // currentPath를 기반으로 모듈 자동 선택
+  useEffect(() => {
+    const pathname = currentPath.split('?')[0] || '/';
+
+    if (pathname.startsWith('/hr')) {
+      setSelectedModule('hr');
+    } else if (pathname.startsWith('/statement') || pathname === '/') {
+      setSelectedModule('statement');
+    }
+  }, [currentPath]);
 
   const handleModuleChange = (module: string): void => {
     setSelectedModule(module);
     // 모듈 변경 시 기본 경로로 이동
     if (module === 'statement') {
       onNavigate('/statement/business-income/monthly');
+    } else if (module === 'hr') {
+      onNavigate('/hr/employee');
     }
   };
 
@@ -78,7 +135,17 @@ export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProp
       {/* LNB (1depth, 2depth 메뉴) */}
       {selectedModule === 'statement' && (
         <LNB
+          title="간이지급명세서"
           menuItems={STATEMENT_MENU_ITEMS}
+          currentPath={currentPath}
+          onNavigate={onNavigate}
+        />
+      )}
+
+      {selectedModule === 'hr' && (
+        <LNB
+          title="인사"
+          menuItems={HR_MENU_ITEMS}
           currentPath={currentPath}
           onNavigate={onNavigate}
         />

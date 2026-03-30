@@ -1,10 +1,17 @@
-# Biskit HR System - 간이지급명세서 관리 시스템
+# Biskit HR System - 인사정보 및 간이지급명세서 관리 시스템
 
-회사에서 사용하는 간이지급명세서(근로소득, 사업소득, 기타소득) 관리 시스템입니다.
+회사에서 사용하는 통합 HR 시스템으로, 인사정보 관리와 간이지급명세서(근로소득, 사업소득, 기타소득) 관리를 제공합니다.
 
 ## 📋 프로젝트 개요
 
 ### 현재 구현된 모듈
+
+- ✅ **인사정보 모듈** (완료)
+  - 직원 관리 (등록/수정/삭제/상세)
+  - 부서 관리 (조직도 트리)
+  - 직급 관리
+  - 근로형태 관리
+  - 이력 관리 (발령 이력)
 
 - ✅ **사업소득 모듈** (완료)
   - 월별 사업소득 관리
@@ -12,11 +19,15 @@
   - 엑셀 업로드/다운로드
   - 추가/수정/삭제 기능
 
+- ✅ **기타소득 모듈** (완료)
+  - 월별 기타소득 관리
+  - 기타소득 합산 화면
+  - 엑셀 업로드/다운로드
+  - 추가/수정/삭제 기능
+
 ### 향후 추가 예정 모듈
 
 - ⏳ 근로소득 모듈
-- ⏳ 기타소득 모듈
-- ⏳ 인사정보 모듈
 - ⏳ 급여정보 모듈
 
 ## 🛠 기술 스택
@@ -61,6 +72,79 @@ npm run dev
 - 중요한 데이터는 정기적으로 백업하시기 바랍니다
 
 ## 📚 주요 기능
+
+## 인사정보 모듈 (HR Module)
+
+### 직원 관리 (HRIS_EMP_01, 02, 03)
+
+- **직원 목록 화면**:
+  - 검색 기능 (성명, 사번)
+  - 필터링 (부서, 직급, 재직상태)
+  - 페이지네이션
+  - 엑셀 다운로드
+  - 선택 삭제 / 전체 삭제
+
+- **직원 등록 화면**:
+  - **개인정보**:
+    - 내외국인 구분 (내국인/외국인)
+    - 신분증 정보 (주민등록번호/외국인등록번호/여권번호)
+    - 국적 (ISO 3166-1 alpha-2, 194개 국가)
+    - 거주구분 (거주자/비거주자)
+    - 장애여부 (해당없음/장애인/상이자/중증장애인)
+    - 이메일, 연락처, 휴대폰번호
+    - 주소 (우편번호 검색)
+  - **조직정보**:
+    - 사번 (자동 생성 또는 수동 입력)
+    - 입사일, 퇴사일
+    - 부서 (조직도 트리에서 선택)
+    - 직급 (직급 관리에서 등록한 직급)
+    - 근로형태 (근로형태 관리에서 등록한 근로형태)
+    - 부서장 여부
+  - **급여정보**:
+    - 급여 타입 (연봉/시급)
+    - 급여 금액
+    - 식대 (연봉: 월, 시급: 일)
+    - 은행명, 예금주, 계좌번호
+
+- **직원 상세 화면**:
+  - 기본정보 표시 (개인정보/조직정보/급여정보)
+  - 재직/퇴사 상태 표시
+  - 근속기간 자동 계산 (N년 N개월)
+  - 정보 수정 다이얼로그 (개인정보/조직정보/급여정보 각각 분리)
+  - 이력 타임라인 (발령 이력)
+
+### 부서 관리 (HRIS_DEPT_01)
+
+- **조직도 트리 구조**:
+  - 계층형 부서 구조 (depth, order 관리)
+  - 부서별 재직자 수 표시
+  - 부서 추가/수정/삭제
+  - 부서 이동 (순서 변경, 상위 부서 변경)
+- **부서 상세**:
+  - 선택한 부서의 직원 목록 표시
+  - 부서 정보 수정/삭제
+
+### 직급 관리 (HRIS_POS_01)
+
+- 직급 목록 (데이터테이블)
+- 직급 추가/수정/삭제
+- 표시순서 관리
+
+### 근로형태 관리 (HRIS_EMP_TYPE_01)
+
+- 근로형태 목록 (데이터테이블)
+- 근로형태 추가/수정/삭제
+- 표시순서 관리
+
+### 이력 관리
+
+- 직원 상세 화면에서 이력 타임라인 표시
+- 이력 유형: 입사, 퇴사, 부서이동, 직급변경, 급여변경 등
+- 이력 등록/수정/삭제
+
+---
+
+## 간이지급명세서 모듈 (Statement Module)
 
 ### 사업소득 합산 화면 (SPS_BI_01)
 
@@ -125,7 +209,13 @@ npm run dev
 
 ### LocalStorage Keys
 
+- `biskit_employees`: 직원 데이터
+- `biskit_organizations`: 부서/조직 데이터
+- `biskit_job_levels`: 직급 마스터 데이터
+- `biskit_employment_types`: 근로형태 마스터 데이터
+- `biskit_employee_history`: 직원 이력 데이터 (발령 이력)
 - `biskit_business_income`: 사업소득 데이터
+- `biskit_other_income`: 기타소득 데이터
 - `biskit_industry_codes`: 업종코드 마스터 데이터
 - `biskit_sps_bi_creation_form`: 간이지급명세서 생성 폼 입력값 (자동 저장/불러오기)
 
@@ -175,15 +265,29 @@ biskit-hr-system/
 ├── frontend/                   # 프론트엔드
 │   ├── src/
 │   │   ├── modules/
-│   │   │   └── statement/
+│   │   │   ├── hr/             # 인사정보 모듈
+│   │   │   │   ├── components/ # 직원/부서 관련 컴포넌트
+│   │   │   │   ├── pages/      # EmployeeList, AddEmployee, EmployeeDetail, DepartmentManagement 등
+│   │   │   │   ├── hooks/      # useEmployee
+│   │   │   │   ├── services/   # LocalStorage 기반 서비스
+│   │   │   │   ├── types/      # employee, organization, jobLevel, employmentType 등
+│   │   │   │   └── utils/      # validation
+│   │   │   └── statement/      # 간이지급명세서 모듈
 │   │   │       ├── components/
 │   │   │       ├── pages/
 │   │   │       ├── hooks/
 │   │   │       ├── services/   # LocalStorage 기반 서비스
 │   │   │       └── types/
 │   │   ├── shared/
-│   │   │   ├── components/ui/
-│   │   │   └── lib/
+│   │   │   ├── components/
+│   │   │   │   ├── ui/         # shadcn 컴포넌트
+│   │   │   │   ├── layout/     # MainLayout, Sidebar, LNB
+│   │   │   │   └── common/     # DataTable, TabContainer, PageHeader
+│   │   │   ├── constants/      # countries (ISO 국가 코드)
+│   │   │   ├── hooks/
+│   │   │   ├── stores/
+│   │   │   ├── lib/
+│   │   │   └── types/
 │   │   ├── App.tsx
 │   │   └── main.tsx
 │   └── package.json
@@ -192,13 +296,10 @@ biskit-hr-system/
 │   ├── common/
 │   │   ├── common-ui-policy.md
 │   │   └── excel-upload-policy.md
-│   └── SPS/BI/
-│       ├── policy_사업소득합산_merged.md
-│       ├── policy_사업소득월별리스트_merged.md
-│       ├── policy_사업소득추가팝업_merged.md
-│       ├── policy_사업소득수정팝업_merged.md
-│       ├── policy_사업소득엑셀업로드_merged.md
-│       └── policy_간이지급명세서생성팝업_merged.md
+│   ├── HRIS/                   # 인사정보 정책 (예정)
+│   └── SPS/
+│       ├── BI/                 # 사업소득
+│       └── OI/                 # 기타소득
 │
 ├── CLAUDE.md                   # 프로젝트 컨텍스트
 └── README.md                   # 이 파일

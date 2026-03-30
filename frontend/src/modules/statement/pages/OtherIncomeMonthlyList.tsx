@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   useOtherIncomeMonthlyList,
   useDeleteManyOtherIncome,
@@ -24,6 +24,7 @@ import type {
   StatementCreationSummary,
 } from '../types/other-income.types';
 import { toast } from '@/shared/hooks/use-toast';
+import { Search } from 'lucide-react';
 
 export function OtherIncomeMonthlyList(): JSX.Element {
   const urlParams = new URLSearchParams(window.location.search);
@@ -37,6 +38,7 @@ export function OtherIncomeMonthlyList(): JSX.Element {
 
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -45,6 +47,8 @@ export function OtherIncomeMonthlyList(): JSX.Element {
   const [showStatementDialog, setShowStatementDialog] = useState(false);
   const [statementTargetIds, setStatementTargetIds] = useState<string[]>([]);
   const [statementTargetType, setStatementTargetType] = useState<'all' | 'selected'>('all');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [shouldFocusAfterSearch, setShouldFocusAfterSearch] = useState(false);
 
   // 검색 결과 데이터 (리스트 표시용)
   const { data, isLoading } = useOtherIncomeMonthlyList({
@@ -67,10 +71,18 @@ export function OtherIncomeMonthlyList(): JSX.Element {
   const deleteManyMutation = useDeleteManyOtherIncome();
   const deleteAllMutation = useDeleteAllOtherIncome();
 
+  // 검색 후 포커스 복원
+  useEffect(() => {
+    if (!isLoading && shouldFocusAfterSearch) {
+      searchInputRef.current?.focus();
+      setShouldFocusAfterSearch(false);
+    }
+  }, [isLoading, shouldFocusAfterSearch]);
+
   // 검색 허용 문자 검증 함수
   const validateSearchInput = (value: string): boolean => {
-    // 허용 문자: 한글·영문·숫자·공백·허용 특수문자(&, ', -, ., ·, (, ))
-    const allowedPattern = /^[가-힣a-zA-Z0-9\s&'\-.·()]*$/;
+    // 허용 문자: 한글(완성형+자음/모음)·영문·숫자·공백·허용 특수문자(&, ', -, ., ·, (, ))
+    const allowedPattern = /^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9\s&'\-.·()]*$/;
     return allowedPattern.test(value);
   };
 
@@ -81,6 +93,7 @@ export function OtherIncomeMonthlyList(): JSX.Element {
     if (trimmed === '') {
       setSearch('');
       setSelectedIds([]);
+      setShouldFocusAfterSearch(true);
       return;
     }
 
@@ -96,6 +109,7 @@ export function OtherIncomeMonthlyList(): JSX.Element {
     }
 
     setSearch(trimmed);
+    setShouldFocusAfterSearch(true);
     setSelectedIds([]);
   };
 
@@ -103,6 +117,13 @@ export function OtherIncomeMonthlyList(): JSX.Element {
     e: React.ChangeEvent<HTMLInputElement>
   ): void => {
     const value = e.target.value;
+
+    // 한글 조합 중에는 검증 건너뛰기
+    if (isComposing) {
+      setSearchInput(value);
+      return;
+    }
+
     // 입력 시에도 허용 문자만 입력 가능
     if (validateSearchInput(value)) {
       setSearchInput(value);
@@ -186,6 +207,13 @@ export function OtherIncomeMonthlyList(): JSX.Element {
   const handleCreateStatementAll = (): void => {
     // 현재 조회된 리스트의 모든 ID
     const allIds = data?.data.map((item) => item.id) ?? [];
+
+    // 조회된 대상자가 없으면 alert 표시
+    if (allIds.length === 0) {
+      alert('조회된 대상자가 없습니다. 대상자를 추가해주세요.');
+      return;
+    }
+
     setStatementTargetIds(allIds);
     setStatementTargetType('all');
     setShowPopover(false);
@@ -281,25 +309,19 @@ export function OtherIncomeMonthlyList(): JSX.Element {
             <PopoverTrigger asChild>
               <Button>간이지급명세서 생성</Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64" align="end">
-              <div className="space-y-2">
-                <button
-                  onClick={handleCreateStatementAll}
-                  className="w-full text-left p-3 rounded-md hover:bg-gray-100 transition-colors"
-                >
-                  <div className="text-sm font-medium">
-                    조회된 전체 대상자({data?.total ?? 0}건)
-                  </div>
-                </button>
-                <button
-                  onClick={handleCreateStatementSelected}
-                  className="w-full text-left p-3 rounded-md hover:bg-gray-100 transition-colors"
-                >
-                  <div className="text-sm font-medium">
-                    선택 대상자({selectedIds.length}건)
-                  </div>
-                </button>
-              </div>
+            <PopoverContent className="w-56 p-1" align="end">
+              <button
+                onClick={handleCreateStatementAll}
+                className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                조회된 전체 대상자({data?.total ?? 0}건)
+              </button>
+              <button
+                onClick={handleCreateStatementSelected}
+                className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                선택 대상자({selectedIds.length}건)
+              </button>
             </PopoverContent>
           </Popover>
         }
@@ -353,14 +375,25 @@ export function OtherIncomeMonthlyList(): JSX.Element {
 
       {/* 검색 영역 */}
       <div className="flex items-center gap-2 mb-4">
-        <Input
-          placeholder="성명(상호)를 입력해주세요."
-          value={searchInput}
-          onChange={handleSearchInputChange}
-          onKeyPress={handleKeyPress}
-          className="max-w-md"
-        />
-        <Button onClick={handleSearch}>검색</Button>
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            ref={searchInputRef}
+            placeholder="성명(상호)를 입력해주세요."
+            value={searchInput}
+            onChange={handleSearchInputChange}
+            onKeyPress={handleKeyPress}
+            onCompositionStart={() => setIsComposing(true)}
+            onCompositionEnd={() => setIsComposing(false)}
+            className="w-full pl-9"
+          />
+        </div>
+        <Button
+          onClick={handleSearch}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          검색
+        </Button>
       </div>
 
       {/* 안내 문구 */}

@@ -456,7 +456,7 @@ export function BusinessIncomeAddDialog({
                     <SelectValue placeholder="선택" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Array.from({ length: currentYear - 2025 + 1 }, (_, i) => 2025 + i).map(
+                    {Array.from({ length: currentYear - 2026 + 1 }, (_, i) => 2026 + i).map(
                       (yr) => (
                         <SelectItem key={yr} value={yr.toString()}>
                           {yr}년

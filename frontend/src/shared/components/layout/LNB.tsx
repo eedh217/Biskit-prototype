@@ -10,6 +10,7 @@ interface MenuItem {
 }
 
 interface LNBProps {
+  title: string;
   menuItems: MenuItem[];
   currentPath: string;
   onNavigate: (path: string) => void;
@@ -17,7 +18,7 @@ interface LNBProps {
 
 const STORAGE_KEY = 'biskit_lnb_expanded_items';
 
-export function LNB({ menuItems, currentPath, onNavigate }: LNBProps): JSX.Element {
+export function LNB({ title, menuItems, currentPath, onNavigate }: LNBProps): JSX.Element {
   // localStorage에서 초기 펼침 상태 로드
   const [expandedItems, setExpandedItems] = useState<string[]>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -81,7 +82,7 @@ export function LNB({ menuItems, currentPath, onNavigate }: LNBProps): JSX.Eleme
       <div key={item.id}>
         <Button
           variant="ghost"
-          className={`w-full justify-start text-left h-auto py-3 px-4 ${
+          className={`w-full justify-between text-left h-auto py-3 px-4 ${
             level > 0 ? 'pl-8' : ''
           } ${
             active
@@ -96,16 +97,14 @@ export function LNB({ menuItems, currentPath, onNavigate }: LNBProps): JSX.Eleme
             }
           }}
         >
+          <span>{item.label}</span>
           {hasChildren && (
             <ChevronRight
-              className={`h-4 w-4 mr-2 transition-transform ${
+              className={`h-4 w-4 ml-2 transition-transform ${
                 isExpanded ? 'rotate-90' : ''
               }`}
             />
           )}
-          <span className={`${!hasChildren && level > 0 ? 'ml-6' : ''}`}>
-            {item.label}
-          </span>
         </Button>
 
         {hasChildren && isExpanded && (
@@ -120,7 +119,7 @@ export function LNB({ menuItems, currentPath, onNavigate }: LNBProps): JSX.Eleme
   return (
     <aside className="w-64 bg-gray-50 border-r border-slate-200 flex flex-col">
       <div className="p-4 border-b border-slate-200">
-        <h2 className="text-lg font-semibold text-slate-800">간이지급명세서</h2>
+        <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-2">

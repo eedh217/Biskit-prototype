@@ -204,6 +204,16 @@ export function AddOtherIncomeDialog({
 
     if (hasError) return;
 
+    // 지급건수 양수 검증 (추가 팝업에서는 1 이상만 허용)
+    const paymentCount = Number(data.paymentCount);
+    if (paymentCount === 0) {
+      setError('paymentCount', {
+        type: 'manual',
+        message: '지급건수는 1 이상이어야 합니다.',
+      });
+      return;
+    }
+
     // 귀속연월 검증
     if (attributionYear && attributionMonth) {
       const attrDate = new Date(
@@ -267,26 +277,9 @@ export function AddOtherIncomeDialog({
       onOpenChange(false);
     } catch (error: unknown) {
       if (error instanceof Error && error.message.includes('이미 존재')) {
-        setError('attributionYear', {
-          type: 'manual',
-          message:
-            '지급연월, 귀속연월, 주민(사업자)등록번호, 소득구분이 동일한 기타소득이 존재합니다.',
-        });
-        setError('attributionMonth', {
-          type: 'manual',
-          message:
-            '지급연월, 귀속연월, 주민(사업자)등록번호, 소득구분이 동일한 기타소득이 존재합니다.',
-        });
-        setError('iino', {
-          type: 'manual',
-          message:
-            '지급연월, 귀속연월, 주민(사업자)등록번호, 소득구분이 동일한 기타소득이 존재합니다.',
-        });
-        setError('incomeType', {
-          type: 'manual',
-          message:
-            '지급연월, 귀속연월, 주민(사업자)등록번호, 소득구분이 동일한 기타소득이 존재합니다.',
-        });
+        alert(
+          '지급연월, 귀속연월, 주민(사업자)등록번호, 소득구분이 동일한 기타소득이 존재합니다.'
+        );
       } else {
         alert('서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
       }
@@ -572,10 +565,16 @@ export function AddOtherIncomeDialog({
                   }
                   onBlur={(e) => {
                     field.onBlur();
-                    if (!e.target.value) {
+                    const value = e.target.value;
+                    if (!value) {
                       setError('paymentCount', {
                         type: 'manual',
                         message: '필수 입력 항목입니다.',
+                      });
+                    } else if (Number(value) === 0) {
+                      setError('paymentCount', {
+                        type: 'manual',
+                        message: '지급건수는 1 이상이어야 합니다.',
                       });
                     } else {
                       clearErrors('paymentCount');

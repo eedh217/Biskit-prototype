@@ -1,32 +1,36 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   useAllBusinessIncomeList,
   useDeleteManyBusinessIncome,
 } from '../hooks/useBusinessIncome';
 import type { BusinessIncome, GroupedBusinessIncome } from '../types/business-income.types';
 import { AllBusinessIncomeAddDialog } from '../components/AllBusinessIncomeAddDialog';
-import { BusinessIncomeEditDialog } from '../components/BusinessIncomeEditDialog';
+import { AllBusinessIncomeEditDialog } from '../components/AllBusinessIncomeEditDialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { DataTable } from '@/shared/components/common/data-table';
 import { PageHeader } from '@/shared/components/common/PageHeader';
-import { allBusinessIncomeColumns } from '../components/all-business-income-columns';
+import { createAllBusinessIncomeColumns } from '../components/all-business-income-columns';
 import { toast } from '@/shared/hooks/use-toast';
+import { Search } from 'lucide-react';
 
 // 검색 허용 문자 검증 함수
 function validateSearchInput(value: string): boolean {
-  // 허용 문자: 한글·영문·숫자·공백·허용 특수문자(&, ', -, ., ·, (, ))
-  const allowedPattern = /^[가-힣a-zA-Z0-9\s&'\-.·()]*$/;
+  // 허용 문자: 한글(완성형+자음/모음)·영문·숫자·공백·허용 특수문자(&, ', -, ., ·, (, ))
+  const allowedPattern = /^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9\s&'\-.·()]*$/;
   return allowedPattern.test(value);
 }
 
 export function AllBusinessIncome(): JSX.Element {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<BusinessIncome | null>(null);
+  const [editingRecords, setEditingRecords] = useState<BusinessIncome[]>([]);
   const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [shouldFocusAfterSearch, setShouldFocusAfterSearch] = useState(false);
 
   const { data, isLoading } = useAllBusinessIncomeList({
     search,
@@ -36,6 +40,14 @@ export function AllBusinessIncome(): JSX.Element {
 
   const deleteManyMutation = useDeleteManyBusinessIncome();
 
+  // 검색 후 포커스 복원
+  useEffect(() => {
+    if (!isLoading && shouldFocusAfterSearch) {
+      searchInputRef.current?.focus();
+      setShouldFocusAfterSearch(false);
+    }
+  }, [isLoading, shouldFocusAfterSearch]);
+
   const handleSearch = (): void => {
     const trimmed = searchInput.trim();
 
@@ -43,6 +55,7 @@ export function AllBusinessIncome(): JSX.Element {
     if (trimmed === '') {
       setSearch('');
       setSelectedRows({});
+      setShouldFocusAfterSearch(true);
       return;
     }
 
@@ -58,6 +71,7 @@ export function AllBusinessIncome(): JSX.Element {
 
     setSearch(trimmed);
     setSelectedRows({});
+    setShouldFocusAfterSearch(true);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -72,6 +86,13 @@ export function AllBusinessIncome(): JSX.Element {
 
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const value = e.target.value;
+
+    // 한글 조합 중에는 검증 건너뛰기
+    if (isComposing) {
+      setSearchInput(value);
+      return;
+    }
+
     // 입력 시에도 허용 문자만 입력 가능
     if (validateSearchInput(value)) {
       setSearchInput(value);
@@ -104,9 +125,20 @@ export function AllBusinessIncome(): JSX.Element {
     setShowAddDialog(true);
   };
 
+  const columns = useMemo(
+    () => createAllBusinessIncomeColumns(selectedIds, (ids) => {
+      const newSelectedRows: Record<string, boolean> = {};
+      ids.forEach((id) => {
+        newSelectedRows[id] = true;
+      });
+      setSelectedRows(newSelectedRows);
+    }, data?.data ?? []),
+    [selectedIds, data?.data]
+  );
+
   const handleRowClick = (row: GroupedBusinessIncome): void => {
-    // 전체 리스트는 단건만 표시하므로 첫 번째 record만 전달
-    setEditingRecord(row.records[0] || null);
+    // 전체 리스트는 단건만 표시하지만 AllBusinessIncomeEditDialog는 배열을 받음
+    setEditingRecords(row.records);
     setShowEditDialog(true);
   };
 
@@ -129,10 +161,10 @@ export function AllBusinessIncome(): JSX.Element {
     <>
       <AllBusinessIncomeAddDialog open={showAddDialog} onOpenChange={setShowAddDialog} />
 
-      <BusinessIncomeEditDialog
+      <AllBusinessIncomeEditDialog
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
-        businessIncome={editingRecord}
+        businessIncomes={editingRecords}
       />
 
       <div>
@@ -142,15 +174,26 @@ export function AllBusinessIncome(): JSX.Element {
         />
 
         <div className="flex items-center gap-2 mb-4">
-          <Input
-            placeholder="성명(상호)를 입력해주세요."
-            value={searchInput}
-            onChange={handleSearchInputChange}
-            onKeyPress={handleKeyPress}
-            className="max-w-md"
-            maxLength={50}
-          />
-          <Button onClick={handleSearch}>검색</Button>
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              ref={searchInputRef}
+              placeholder="성명(상호)를 입력해주세요."
+              value={searchInput}
+              onChange={handleSearchInputChange}
+              onKeyPress={handleKeyPress}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
+              className="w-full pl-9"
+              maxLength={50}
+            />
+          </div>
+          <Button
+            onClick={handleSearch}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            검색
+          </Button>
         </div>
 
         <div className="flex justify-between items-center mb-4">
@@ -173,7 +216,7 @@ export function AllBusinessIncome(): JSX.Element {
         </div>
 
         <DataTable
-          columns={allBusinessIncomeColumns}
+          columns={columns}
           data={data?.data ?? []}
           onRowClick={handleRowClick}
           pageSize={30}

@@ -3,27 +3,55 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/shared/components/common/data-table-column-header';
 import { OtherIncome, formatCurrency, getIncomeTypeLabel } from '../types/other-income.types';
 
-export const allOtherIncomeColumns: ColumnDef<OtherIncome>[] = [
-  {
-    id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onChange={(e) => table.toggleAllPageRowsSelected(e.target.checked)}
-        aria-label="모두 선택"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onChange={(e) => row.toggleSelected(e.target.checked)}
-        aria-label="행 선택"
-        onClick={(e) => e.stopPropagation()}
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
+export function createAllOtherIncomeColumns(
+  selectedIds: string[],
+  onSelectionChange: (ids: string[]) => void,
+  allData: OtherIncome[]
+): ColumnDef<OtherIncome>[] {
+  return [
+    {
+      id: 'select',
+      header: () => {
+        const allIds = allData.map((item) => item.id);
+        const isAllSelected =
+          allIds.length > 0 && allIds.every((id) => selectedIds.includes(id));
+
+        return (
+          <Checkbox
+            checked={isAllSelected}
+            onChange={(e) => {
+              if (e.target.checked) {
+                onSelectionChange(allIds);
+              } else {
+                onSelectionChange([]);
+              }
+            }}
+            aria-label="모두 선택"
+          />
+        );
+      },
+      cell: ({ row }) => {
+        const id = row.original.id;
+        const isSelected = selectedIds.includes(id);
+
+        return (
+          <Checkbox
+            checked={isSelected}
+            onChange={(e) => {
+              if (e.target.checked) {
+                onSelectionChange([...selectedIds, id]);
+              } else {
+                onSelectionChange(selectedIds.filter((selectedId) => selectedId !== id));
+              }
+            }}
+            aria-label="행 선택"
+            onClick={(e) => e.stopPropagation()}
+          />
+        );
+      },
+      enableSorting: false,
+      enableHiding: false,
+    },
   {
     accessorKey: 'attributionYear',
     header: ({ column }) => (
@@ -139,3 +167,4 @@ export const allOtherIncomeColumns: ColumnDef<OtherIncome>[] = [
     ),
   },
 ];
+}

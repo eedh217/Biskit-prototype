@@ -2,7 +2,7 @@ import { ArrowLeft } from 'lucide-react';
 import { ReactNode } from 'react';
 
 interface PageHeaderProps {
-  title: string;
+  title: string | ReactNode;
   showBackButton?: boolean;
   onBack?: () => void;
   actions?: ReactNode;

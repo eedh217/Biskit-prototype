@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   useBusinessIncomeList,
   useDeleteManyBusinessIncome,
 } from '../hooks/useBusinessIncome';
 import { BusinessIncomeSummary } from './BusinessIncomeSummary';
 import { BusinessIncomeAddDialog } from '../components/BusinessIncomeAddDialog';
-import { AllBusinessIncomeEditDialog } from '../components/AllBusinessIncomeEditDialog';
+import { BusinessIncomeEditDialog } from '../components/BusinessIncomeEditDialog';
 import { BusinessIncomeStatementDialog } from '../components/BusinessIncomeStatementDialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -24,6 +24,7 @@ import type {
   StatementCreationSummary,
 } from '../types/business-income.types';
 import { toast } from '@/shared/hooks/use-toast';
+import { Search } from 'lucide-react';
 
 export function BusinessIncomeMonthlyList(): JSX.Element {
   const urlParams = new URLSearchParams(window.location.search);
@@ -37,14 +38,17 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
 
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingRecords, setEditingRecords] = useState<BusinessIncome[]>([]);
+  const [editingRecord, setEditingRecord] = useState<BusinessIncome | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showPopover, setShowPopover] = useState(false);
   const [showStatementDialog, setShowStatementDialog] = useState(false);
   const [statementTargetIds, setStatementTargetIds] = useState<string[]>([]);
   const [statementTargetType, setStatementTargetType] = useState<'all' | 'selected'>('all');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [shouldFocusAfterSearch, setShouldFocusAfterSearch] = useState(false);
 
   // 검색 결과 데이터 (리스트 표시용)
   const { data, isLoading } = useBusinessIncomeList({
@@ -66,10 +70,18 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
 
   const deleteManyMutation = useDeleteManyBusinessIncome();
 
+  // 검색 후 포커스 복원
+  useEffect(() => {
+    if (!isLoading && shouldFocusAfterSearch) {
+      searchInputRef.current?.focus();
+      setShouldFocusAfterSearch(false);
+    }
+  }, [isLoading, shouldFocusAfterSearch]);
+
   // 검색 허용 문자 검증 함수
   const validateSearchInput = (value: string): boolean => {
-    // 허용 문자: 한글·영문·숫자·공백·허용 특수문자(&, ', -, ., ·, (, ))
-    const allowedPattern = /^[가-힣a-zA-Z0-9\s&'\-.·()]*$/;
+    // 허용 문자: 한글(완성형+자음/모음)·영문·숫자·공백·허용 특수문자(&, ', -, ., ·, (, ))
+    const allowedPattern = /^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9\s&'\-.·()]*$/;
     return allowedPattern.test(value);
   };
 
@@ -80,6 +92,7 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
     if (trimmed === '') {
       setSearch('');
       setSelectedIds([]);
+      setShouldFocusAfterSearch(true);
       return;
     }
 
@@ -95,10 +108,18 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
 
     setSearch(trimmed);
     setSelectedIds([]);
+    setShouldFocusAfterSearch(true);
   };
 
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const value = e.target.value;
+
+    // 한글 조합 중에는 검증 건너뛰기
+    if (isComposing) {
+      setSearchInput(value);
+      return;
+    }
+
     // 입력 시에도 허용 문자만 입력 가능
     if (validateSearchInput(value)) {
       setSearchInput(value);
@@ -181,15 +202,8 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
   };
 
   const handleRowClick = (row: GroupedBusinessIncome): void => {
-    // records 배열을 지급연월 오름차순으로 정렬
-    const sortedRecords = [...row.records].sort((a, b) => {
-      if (a.paymentYear !== b.paymentYear) {
-        return a.paymentYear - b.paymentYear;
-      }
-      return a.paymentMonth - b.paymentMonth;
-    });
-
-    setEditingRecords(sortedRecords);
+    // 월별 리스트는 단건만 표시하므로 첫 번째 record만 전달
+    setEditingRecord(row.records[0] || null);
     setShowEditDialog(true);
   };
 
@@ -205,6 +219,13 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
   const handleCreateStatementAll = (): void => {
     // 현재 조회된 리스트의 모든 ID
     const allIds = data?.data.flatMap((item) => item.groupedIds) ?? [];
+
+    // 조회된 대상자가 없으면 alert 표시
+    if (allIds.length === 0) {
+      alert('조회된 대상자가 없습니다. 대상자를 추가해주세요.');
+      return;
+    }
+
     setStatementTargetIds(allIds);
     setStatementTargetType('all');
     setShowPopover(false);
@@ -295,10 +316,10 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
         month={month}
       />
 
-      <AllBusinessIncomeEditDialog
+      <BusinessIncomeEditDialog
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
-        businessIncomes={editingRecords}
+        businessIncome={editingRecord}
       />
 
       <BusinessIncomeStatementDialog
@@ -324,25 +345,19 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
               <PopoverTrigger asChild>
                 <Button>간이지급명세서 생성</Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64" align="end">
-                <div className="space-y-2">
-                  <button
-                    onClick={handleCreateStatementAll}
-                    className="w-full text-left p-3 rounded-md hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="text-sm font-medium">
-                      조회된 전체 대상자({data?.total ?? 0}건)
-                    </div>
-                  </button>
-                  <button
-                    onClick={handleCreateStatementSelected}
-                    className="w-full text-left p-3 rounded-md hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="text-sm font-medium">
-                      선택 대상자({selectedIds.length}건)
-                    </div>
-                  </button>
-                </div>
+              <PopoverContent className="w-56 p-1" align="end">
+                <button
+                  onClick={handleCreateStatementAll}
+                  className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  조회된 전체 대상자({data?.total ?? 0}건)
+                </button>
+                <button
+                  onClick={handleCreateStatementSelected}
+                  className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                >
+                  선택 대상자({selectedIds.length}건)
+                </button>
               </PopoverContent>
             </Popover>
           }
@@ -382,14 +397,25 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
         </div>
 
         <div className="flex items-center gap-2 mb-4">
-          <Input
-            placeholder="성명(상호)를 입력해주세요."
-            value={searchInput}
-            onChange={handleSearchInputChange}
-            onKeyPress={handleKeyPress}
-            className="max-w-md"
-          />
-          <Button onClick={handleSearch}>검색</Button>
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              ref={searchInputRef}
+              placeholder="성명(상호)를 입력해주세요."
+              value={searchInput}
+              onChange={handleSearchInputChange}
+              onKeyPress={handleKeyPress}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
+              className="w-full pl-9"
+            />
+          </div>
+          <Button
+            onClick={handleSearch}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            검색
+          </Button>
         </div>
 
         <div className="mb-2 text-sm text-gray-600">

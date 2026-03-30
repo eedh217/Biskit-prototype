@@ -1,29 +1,33 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useOtherIncomeAllList, useDeleteManyOtherIncome } from '../hooks/useOtherIncome';
 import type { OtherIncome } from '../types/other-income.types';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { DataTable } from '@/shared/components/common/data-table';
 import { PageHeader } from '@/shared/components/common/PageHeader';
-import { allOtherIncomeColumns } from '../components/all-other-income-columns';
+import { createAllOtherIncomeColumns } from '../components/all-other-income-columns';
 import { AllOtherIncomeAddDialog } from '../components/AllOtherIncomeAddDialog';
 import { AllOtherIncomeEditDialog } from '../components/AllOtherIncomeEditDialog';
 import { toast } from '@/shared/hooks/use-toast';
+import { Search } from 'lucide-react';
 
 // 검색 허용 문자 검증 함수
 function validateSearchInput(value: string): boolean {
-  // 허용 문자: 한글·영문·숫자·공백·허용 특수문자(&, ', -, ., ·, (, ))
-  const allowedPattern = /^[가-힣a-zA-Z0-9\s&'\-.·()]*$/;
+  // 허용 문자: 한글(완성형+자음/모음)·영문·숫자·공백·허용 특수문자(&, ', -, ., ·, (, ))
+  const allowedPattern = /^[가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9\s&'\-.·()]*$/;
   return allowedPattern.test(value);
 }
 
 export function AllOtherIncome(): JSX.Element {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedOtherIncomeId, setSelectedOtherIncomeId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [shouldFocusAfterSearch, setShouldFocusAfterSearch] = useState(false);
 
   const { data, isLoading } = useOtherIncomeAllList({
     search,
@@ -33,6 +37,14 @@ export function AllOtherIncome(): JSX.Element {
 
   const deleteManyMutation = useDeleteManyOtherIncome();
 
+  // 검색 후 포커스 복원
+  useEffect(() => {
+    if (!isLoading && shouldFocusAfterSearch) {
+      searchInputRef.current?.focus();
+      setShouldFocusAfterSearch(false);
+    }
+  }, [isLoading, shouldFocusAfterSearch]);
+
   const handleSearch = (): void => {
     const trimmed = searchInput.trim();
 
@@ -40,6 +52,7 @@ export function AllOtherIncome(): JSX.Element {
     if (trimmed === '') {
       setSearch('');
       setSelectedRows({});
+      setShouldFocusAfterSearch(true);
       return;
     }
 
@@ -55,6 +68,7 @@ export function AllOtherIncome(): JSX.Element {
 
     setSearch(trimmed);
     setSelectedRows({});
+    setShouldFocusAfterSearch(true);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -69,6 +83,13 @@ export function AllOtherIncome(): JSX.Element {
 
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     const value = e.target.value;
+
+    // 한글 조합 중에는 검증 건너뛰기
+    if (isComposing) {
+      setSearchInput(value);
+      return;
+    }
+
     // 입력 시에도 허용 문자만 입력 가능
     if (validateSearchInput(value)) {
       setSearchInput(value);
@@ -100,6 +121,17 @@ export function AllOtherIncome(): JSX.Element {
   const handleAddOtherIncome = (): void => {
     setShowAddDialog(true);
   };
+
+  const columns = useMemo(
+    () => createAllOtherIncomeColumns(selectedIds, (ids) => {
+      const newSelectedRows: Record<string, boolean> = {};
+      ids.forEach((id) => {
+        newSelectedRows[id] = true;
+      });
+      setSelectedRows(newSelectedRows);
+    }, data?.data ?? []),
+    [selectedIds, data?.data]
+  );
 
   const handleRowClick = (row: OtherIncome): void => {
     setSelectedOtherIncomeId(row.id);
@@ -154,15 +186,26 @@ export function AllOtherIncome(): JSX.Element {
 
         {/* 검색영역 */}
         <div className="flex items-center gap-2 mb-4">
-          <Input
-            placeholder="성명(상호)를 입력해주세요."
-            value={searchInput}
-            onChange={handleSearchInputChange}
-            onKeyPress={handleKeyPress}
-            className="max-w-md"
-            maxLength={50}
-          />
-          <Button onClick={handleSearch}>검색</Button>
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              ref={searchInputRef}
+              placeholder="성명(상호)를 입력해주세요."
+              value={searchInput}
+              onChange={handleSearchInputChange}
+              onKeyPress={handleKeyPress}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
+              className="w-full pl-9"
+              maxLength={50}
+            />
+          </div>
+          <Button
+            onClick={handleSearch}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            검색
+          </Button>
         </div>
 
         {/* 리스트 개수 및 액션 버튼 */}
@@ -191,7 +234,7 @@ export function AllOtherIncome(): JSX.Element {
 
         {/* 리스트(테이블) */}
         <DataTable
-          columns={allOtherIncomeColumns}
+          columns={columns}
           data={data?.data ?? []}
           onRowClick={handleRowClick}
           pageSize={30}
