@@ -284,8 +284,6 @@ export function LeaveAdjustment(): JSX.Element {
       <DataTable
         columns={columns}
         data={adjustmentHistory}
-        searchPlaceholder="직원명 또는 사유 검색"
-        emptyMessage="조정 이력이 없습니다."
       />
 
       {/* 조정 Dialog */}

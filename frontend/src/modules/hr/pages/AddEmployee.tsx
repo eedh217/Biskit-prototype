@@ -29,8 +29,6 @@ import {
   isValidResidentRegistrationNumber,
   isValidForeignerRegistrationNumber,
   isValidEmail,
-  hasSpecialCharacters,
-  isValidEmployeeNumber,
   isValidContact,
   isOnlyDigits,
   isValidPassportNumber,
@@ -234,7 +232,7 @@ export function AddEmployee(): JSX.Element {
     // 페이지 진입 시 현재 상태를 history에 푸시 (뒤로가기 감지를 위해)
     window.history.pushState(null, '', window.location.pathname);
 
-    const handlePopState = (e: PopStateEvent): void => {
+    const handlePopState = (): void => {
       if (isModified && !isSubmitting) {
         const confirmed = window.confirm('직원 추가를 취소하시겠습니까?');
         if (!confirmed) {
@@ -277,7 +275,7 @@ export function AddEmployee(): JSX.Element {
         // 확인하면 isModified를 false로 설정하고 이동 허용
         setIsModified(false);
         setTimeout(() => {
-          target.click();
+          (target as HTMLElement).click();
         }, 0);
       }
     };
@@ -547,13 +545,6 @@ export function AddEmployee(): JSX.Element {
       gender,
       nationality,
       email,
-      contact,
-      phone1,
-      phone2,
-      phone3,
-      zipCode,
-      address,
-      detailAddress,
       joinDate,
     } = formData;
 
@@ -663,7 +654,7 @@ export function AddEmployee(): JSX.Element {
             : null,
         gender:
           formData.nationalityType === 'foreign' && formData.foreignerIdType === 'passport'
-            ? formData.gender
+            ? (formData.gender === '' ? null : formData.gender)
             : null,
         nationality: formData.nationality || null,
         residenceType: formData.residenceType,
@@ -691,7 +682,7 @@ export function AddEmployee(): JSX.Element {
         accountNumber: formData.accountNumber || null,
       };
 
-      const newEmployee = await employeeService.create(dto);
+      await employeeService.create(dto);
 
       setIsModified(false);
 

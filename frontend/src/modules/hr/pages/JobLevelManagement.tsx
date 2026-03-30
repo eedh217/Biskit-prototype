@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { PageHeader } from '@/shared/components/common/PageHeader';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Card, CardContent } from '@/shared/components/ui/card';
+import { CardContent } from '@/shared/components/ui/card';
 import { useToast } from '@/shared/hooks/use-toast';
 import { jobLevelService } from '../services/jobLevelService';
 import { employeeService } from '../services/employeeService';
@@ -193,7 +193,7 @@ export function JobLevelManagement(): JSX.Element {
       setJobLevels(data);
 
       // 첫 번째 직급 자동 선택
-      if (data.length > 0 && !selectedJobLevelId) {
+      if (data.length > 0 && !selectedJobLevelId && data[0]) {
         setSelectedJobLevelId(data[0].id);
       }
 

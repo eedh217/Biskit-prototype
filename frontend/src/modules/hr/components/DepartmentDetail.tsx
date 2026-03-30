@@ -29,7 +29,6 @@ export function DepartmentDetail({ departmentId, tree }: DepartmentDetailProps):
   const [departmentHead, setDepartmentHead] = useState<Employee | null>(null);
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [organizationPath, setOrganizationPath] = useState<string>('');
 
   useEffect(() => {
     loadDepartmentDetails();
@@ -87,10 +86,6 @@ export function DepartmentDetail({ departmentId, tree }: DepartmentDetailProps):
         return;
       }
       setDepartment(deptNode);
-
-      // 조직 경로 가져오기
-      const path = await getOrganizationPath(departmentId);
-      setOrganizationPath(path);
 
       // 하위 부서 포함한 모든 부서 ID 가져오기
       const allDepartmentIds = getAllChildIds(deptNode);

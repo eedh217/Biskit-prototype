@@ -71,19 +71,6 @@ function buildTree(organizations: Organization[]): OrganizationNode[] {
   return roots;
 }
 
-function flattenTree(nodes: OrganizationNode[]): Organization[] {
-  const result: Organization[] = [];
-
-  const traverse = (node: OrganizationNode): void => {
-    const { children, ...org } = node;
-    result.push(org);
-    children.forEach(traverse);
-  };
-
-  nodes.forEach(traverse);
-  return result;
-}
-
 function calculateDepth(parentId: string | null, organizations: Organization[]): number {
   if (parentId === null) {
     return 0;
@@ -191,6 +178,9 @@ export const organizationService = {
     }
 
     const organization = organizations[index];
+    if (!organization) {
+      throw new Error('조직을 찾을 수 없습니다.');
+    }
 
     // 중복 체크
     if (hasDuplicateName(dto.name, organization.parentId, organizations, id)) {
@@ -276,11 +266,11 @@ export const organizationService = {
 
     items.forEach((item) => {
       const index = organizations.findIndex((org) => org.id === item.id);
-      if (index !== -1) {
-        organizations[index].parentId = item.parentId;
-        organizations[index].order = item.order;
-        organizations[index].depth = calculateDepth(item.parentId, organizations);
-        organizations[index].updatedAt = new Date().toISOString();
+      if (index !== -1 && organizations[index]) {
+        organizations[index]!.parentId = item.parentId;
+        organizations[index]!.order = item.order;
+        organizations[index]!.depth = calculateDepth(item.parentId, organizations);
+        organizations[index]!.updatedAt = new Date().toISOString();
       }
     });
 

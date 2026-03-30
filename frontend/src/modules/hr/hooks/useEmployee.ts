@@ -4,6 +4,7 @@ import type {
   EmployeeListResponse,
   CreateEmployeeDto,
   UpdateEmployeeDto,
+  DeleteManyResult,
 } from '../types/employee';
 import { employeeService } from '../services/employeeService';
 
@@ -76,7 +77,7 @@ export function useDeleteEmployee() {
 export function useDeleteManyEmployees() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, string[]>({
+  return useMutation<DeleteManyResult, Error, string[]>({
     mutationFn: (ids) => employeeService.deleteMany(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: employeeKeys.all });

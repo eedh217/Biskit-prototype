@@ -8,24 +8,20 @@ import {
   useSensors,
   DragEndEvent,
   DragStartEvent,
-  DragOverEvent,
   DragOverlay,
   CollisionDetection,
   pointerWithin,
-  getFirstCollision,
 } from '@dnd-kit/core';
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-  arrayMove,
 } from '@dnd-kit/sortable';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Plus, Search } from 'lucide-react';
 import { OrganizationNode } from '../types/organization';
 import { DepartmentTreeItem } from './DepartmentTreeItem';
-import { useToast } from '@/shared/hooks/use-toast';
 
 interface DepartmentTreeProps {
   tree: OrganizationNode[];

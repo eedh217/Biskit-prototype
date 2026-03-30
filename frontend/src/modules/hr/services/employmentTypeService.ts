@@ -62,14 +62,15 @@ export const employmentTypeService = {
       throw new Error('근로형태를 찾을 수 없습니다.');
     }
 
-    data[index] = {
-      ...data[index],
+    const updatedItem: EmploymentType = {
+      ...data[index]!,
       name: dto.name,
       updatedAt: new Date().toISOString(),
     };
 
+    data[index] = updatedItem;
     saveData(data);
-    return data[index];
+    return updatedItem;
   },
 
   async delete(id: string): Promise<void> {

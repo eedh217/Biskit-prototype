@@ -54,11 +54,15 @@ export const leaveBalanceService = {
       balance.updatedAt = new Date().toISOString();
 
       // 저장
-      const index = data.findIndex((b) => b.id === balance.id);
-      if (index !== -1) {
+      const index = data.findIndex((b) => b.id === balance?.id);
+      if (index !== -1 && balance) {
         data[index] = balance;
         saveData(data);
       }
+    }
+
+    if (!balance) {
+      throw new Error('잔액 계산에 실패했습니다.');
     }
 
     return balance;

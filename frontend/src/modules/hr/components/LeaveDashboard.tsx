@@ -21,7 +21,6 @@ import { employeeService } from '../services/employeeService';
 import { leaveBalanceService } from '../services/leaveBalanceService';
 import { organizationService } from '../services/organizationService';
 import type { Employee } from '../types/employee';
-import type { LeaveBalanceSummary } from '../types/leave';
 import type { Organization } from '../types/organization';
 import { getEmploymentStatus } from '../types/employee';
 import { ColumnDef } from '@tanstack/react-table';
@@ -44,7 +43,6 @@ export function LeaveDashboard(): JSX.Element {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [rows, setRows] = useState<EmployeeLeaveRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
@@ -60,7 +58,6 @@ export function LeaveDashboard(): JSX.Element {
   }, []);
 
   const loadData = async (): Promise<void> => {
-    setIsLoading(true);
     try {
       const emps = await employeeService.getAll({ limit: 9999 });
       const orgs = await organizationService.getAll();
@@ -97,8 +94,6 @@ export function LeaveDashboard(): JSX.Element {
       setRows(rowData);
     } catch (error) {
       console.error('Failed to load leave dashboard:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -369,7 +364,6 @@ export function LeaveDashboard(): JSX.Element {
       <DataTable
         columns={columns}
         data={sortedRows}
-        isLoading={isLoading}
         onRowClick={handleRowClick}
       />
 

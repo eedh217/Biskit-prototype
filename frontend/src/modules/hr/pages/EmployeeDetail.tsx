@@ -20,7 +20,6 @@ import { EditPersonalInfoDialog } from '../components/EditPersonalInfoDialog';
 import { EditOrganizationInfoDialog } from '../components/EditOrganizationInfoDialog';
 import { EditSalaryInfoDialog } from '../components/EditSalaryInfoDialog';
 import { EmployeeHistoryTimeline } from '../components/EmployeeHistoryTimeline';
-import type { HistoryCategory } from '../types/employeeHistory';
 import { LeaveTab } from '../components/LeaveTab';
 
 export function EmployeeDetail(): JSX.Element {
@@ -43,7 +42,6 @@ export function EmployeeDetail(): JSX.Element {
     const saved = localStorage.getItem('biskit_employee_detail_show_history');
     return saved === 'true';
   });
-  const [currentTab, setCurrentTab] = useState<HistoryCategory>('personal');
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -236,7 +234,6 @@ export function EmployeeDetail(): JSX.Element {
         <Tabs
           defaultValue="personal"
           className="w-full"
-          onValueChange={(value) => setCurrentTab(value as HistoryCategory)}
         >
           <div className="flex items-center justify-between mb-6">
             <TabsList>

@@ -1,5 +1,5 @@
 import { ColumnDef } from '@tanstack/react-table';
-import { Employee, formatDate, formatPhone } from '../types/employee';
+import { Employee, formatPhone } from '../types/employee';
 
 export interface DepartmentEmployee extends Employee {
   positionName: string | null;

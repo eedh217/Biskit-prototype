@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { EmploymentType } from '../types/employmentType';
-import { Employee, getEmploymentStatus } from '../types/employee';
+import { getEmploymentStatus } from '../types/employee';
 import { employeeService } from '../services/employeeService';
 import { jobLevelService } from '../services/jobLevelService';
 import { employmentTypeService } from '../services/employmentTypeService';

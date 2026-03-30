@@ -483,7 +483,7 @@ export function EditPersonalInfoDialog({
     }
 
     // 에러가 있으면 invalid (빈 값은 제외)
-    const hasErrors = Object.entries(errors).some(([key, value]) => {
+    const hasErrors = Object.entries(errors).some(([, value]) => {
       return value !== undefined && value !== '';
     });
 
@@ -613,11 +613,11 @@ export function EditPersonalInfoDialog({
       // 성별
       const newGender =
         formData.nationalityType === 'foreign' && formData.foreignerIdType === 'passport'
-          ? (formData.gender || null)
+          ? (formData.gender === '' ? null : formData.gender)
           : null;
       if (normalize(newGender) !== normalize(employee.gender)) {
-        const genderLabel = (g: 'male' | 'female' | '' | null): string => {
-          if (!g || g === '') return '-';
+        const genderLabel = (g: 'male' | 'female' | null): string => {
+          if (!g) return '-';
           return g === 'male' ? '남' : '여';
         };
         changes.push({

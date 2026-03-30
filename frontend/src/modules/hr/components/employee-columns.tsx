@@ -4,7 +4,6 @@ import { DataTableColumnHeader } from '@/shared/components/common/data-table-col
 import {
   Employee,
   getEmploymentStatus,
-  calculateTenure,
   formatDate,
   formatPhone,
 } from '../types/employee';

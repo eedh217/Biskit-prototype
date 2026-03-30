@@ -306,8 +306,8 @@ export function EditOrganizationInfoDialog({
         changes.push({
           fieldName: '부서장 여부',
           fieldKey: 'isDepartmentHead',
-          oldValue: employee.isDepartmentHead,
-          newValue: finalIsDepartmentHead,
+          oldValue: employee.isDepartmentHead ? '부서장' : '일반',
+          newValue: finalIsDepartmentHead ? '부서장' : '일반',
           displayOldValue: employee.isDepartmentHead ? '부서장' : '일반',
           displayNewValue: finalIsDepartmentHead ? '부서장' : '일반',
         });

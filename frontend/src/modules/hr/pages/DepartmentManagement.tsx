@@ -22,7 +22,7 @@ export function DepartmentManagement(): JSX.Element {
       setTree(data);
 
       // 첫 번째 부서 자동 선택
-      if (data.length > 0 && !selectedDepartmentId) {
+      if (data.length > 0 && !selectedDepartmentId && data[0]) {
         setSelectedDepartmentId(data[0].id);
       }
 
@@ -130,9 +130,6 @@ export function DepartmentManagement(): JSX.Element {
       throw new Error(checkResult.message);
     }
 
-    // 삭제 전에 현재 선택된 부서인지 확인
-    const isSelectedDepartment = selectedDepartmentId === id;
-
     // 하위 부서 ID 수집 (하위 부서도 삭제되므로)
     const allOrgs = await organizationService.getAll();
     const childIds = getAllChildIds(id, allOrgs);
@@ -147,7 +144,7 @@ export function DepartmentManagement(): JSX.Element {
     // 선택된 부서가 삭제되었으면 첫 번째 부서로 변경
     if (isSelectedInDeletedDepts) {
       const newTree = await organizationService.getTree();
-      if (newTree.length > 0) {
+      if (newTree.length > 0 && newTree[0]) {
         setSelectedDepartmentId(newTree[0].id);
       } else {
         setSelectedDepartmentId(null);
@@ -194,7 +191,9 @@ export function DepartmentManagement(): JSX.Element {
 
     // 순서 변경
     const [removed] = siblings.splice(activeIndex, 1);
-    siblings.splice(overIndex, 0, removed);
+    if (removed) {
+      siblings.splice(overIndex, 0, removed);
+    }
 
     // 새로운 order 할당
     const reorderItems = siblings.map((sibling, index) => ({

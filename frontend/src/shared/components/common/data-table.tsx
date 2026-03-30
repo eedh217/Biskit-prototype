@@ -66,7 +66,12 @@ export function DataTable<TData, TValue>({
 
   // 외부에서 rowSelection을 제어하는 경우 외부 값 사용, 아니면 내부 상태 사용
   const rowSelection = externalRowSelection ?? internalRowSelection;
-  const setRowSelection = onRowSelectionChange ?? setInternalRowSelection;
+  const setRowSelection = onRowSelectionChange
+    ? (updater: ((old: Record<string, boolean>) => Record<string, boolean>) | Record<string, boolean>) => {
+        const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
+        onRowSelectionChange(newSelection);
+      }
+    : setInternalRowSelection;
 
   const table = useReactTable({
     data,

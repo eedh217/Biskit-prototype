@@ -118,9 +118,14 @@ export async function seedEmployees(): Promise<void> {
       ];
 
       for (const dept of subDepts) {
+        const parentId = createdRootDepts[dept.parentIndex];
+        if (!parentId) {
+          console.error(`  ❌ Parent department not found for ${dept.name}`);
+          continue;
+        }
         await organizationService.create({
           name: dept.name,
-          parentId: createdRootDepts[dept.parentIndex],
+          parentId,
           order: dept.order,
         });
         console.log(`  ✅ Created: ${dept.name}`);
@@ -180,7 +185,7 @@ export async function seedEmployees(): Promise<void> {
 
       // 이메일
       const emailDomain = emailDomains[Math.floor(Math.random() * emailDomains.length)];
-      const email = `${lastName.toLowerCase()}${firstName.toLowerCase()}${i}@${emailDomain}`;
+      const email = `${(lastName || 'test').toLowerCase()}${(firstName || 'user').toLowerCase()}${i}@${emailDomain}`;
 
       // 전화번호
       const phone = getRandomPhone();
@@ -200,12 +205,15 @@ export async function seedEmployees(): Promise<void> {
 
       // 부서 랜덤 배정
       const department = organizations[Math.floor(Math.random() * organizations.length)];
+      if (!department) continue;
 
       // 직급 랜덤 배정
       const jobLevel = jobLevels[Math.floor(Math.random() * jobLevels.length)];
+      if (!jobLevel) continue;
 
       // 고용형태 랜덤 배정
       const employmentType = employmentTypes[Math.floor(Math.random() * employmentTypes.length)];
+      if (!employmentType) continue;
 
       // 부서장 여부 (각 부서당 1명, 퇴사자는 부서장 불가)
       let isDepartmentHead = false;

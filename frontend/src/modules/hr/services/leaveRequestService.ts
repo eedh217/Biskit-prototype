@@ -111,8 +111,11 @@ export const leaveRequestService = {
     }
 
     const request = data[index];
+    if (!request) {
+      throw new Error('신청을 찾을 수 없습니다.');
+    }
 
-    data[index] = {
+    const updatedRequest: LeaveRequest = {
       ...request,
       status: 'approved',
       approvedBy: dto.approvedBy,
@@ -120,6 +123,7 @@ export const leaveRequestService = {
       updatedAt: new Date().toISOString(),
     };
 
+    data[index] = updatedRequest;
     saveData(data);
 
     // 연차 이력 추가 (사용)
@@ -137,7 +141,7 @@ export const leaveRequestService = {
       request.id
     );
 
-    return data[index];
+    return updatedRequest;
   },
 
   /**
@@ -152,8 +156,13 @@ export const leaveRequestService = {
       throw new Error('신청을 찾을 수 없습니다.');
     }
 
-    data[index] = {
-      ...data[index],
+    const request = data[index];
+    if (!request) {
+      throw new Error('신청을 찾을 수 없습니다.');
+    }
+
+    const updatedRequest: LeaveRequest = {
+      ...request,
       status: 'rejected',
       rejectionReason: dto.rejectionReason,
       approvedBy: dto.rejectedBy,
@@ -161,8 +170,9 @@ export const leaveRequestService = {
       updatedAt: new Date().toISOString(),
     };
 
+    data[index] = updatedRequest;
     saveData(data);
-    return data[index];
+    return updatedRequest;
   },
 
   /**
@@ -211,18 +221,22 @@ export const leaveRequestService = {
     }
 
     const request = data[index];
+    if (!request) {
+      throw new Error('신청을 찾을 수 없습니다.');
+    }
 
     if (request.status !== 'approved') {
       throw new Error('승인된 신청만 취소할 수 있습니다.');
     }
 
     // 상태를 cancelled로 변경
-    data[index] = {
+    const updatedRequest: LeaveRequest = {
       ...request,
       status: 'cancelled',
       updatedAt: new Date().toISOString(),
     };
 
+    data[index] = updatedRequest;
     saveData(data);
 
     // 연차 이력 추가 (복원)
@@ -240,7 +254,7 @@ export const leaveRequestService = {
       request.id
     );
 
-    return data[index];
+    return updatedRequest;
   },
 
   /**
@@ -256,12 +270,15 @@ export const leaveRequestService = {
     }
 
     const request = data[index];
+    if (!request) {
+      throw new Error('신청을 찾을 수 없습니다.');
+    }
 
     if (request.status !== 'rejected' && request.status !== 'cancelled') {
       throw new Error('반려되거나 승인취소된 신청만 승인할 수 있습니다.');
     }
 
-    data[index] = {
+    const updatedRequest: LeaveRequest = {
       ...request,
       status: 'approved',
       approvedBy: dto.approvedBy,
@@ -270,6 +287,7 @@ export const leaveRequestService = {
       updatedAt: new Date().toISOString(),
     };
 
+    data[index] = updatedRequest;
     saveData(data);
 
     // 연차 이력 추가 (사용)
@@ -287,6 +305,6 @@ export const leaveRequestService = {
       request.id
     );
 
-    return data[index];
+    return updatedRequest;
   },
 };
