@@ -43,7 +43,11 @@ export const leaveHistoryService = {
     type: 'grant' | 'use' | 'cancel' | 'adjust',
     days: number,
     reason: string,
-    leaveRequestId: string | null = null
+    leaveRequestId: string | null = null,
+    actualDays: number = 0,
+    leaveTypeName: string | null = null,
+    affectsLeaveBalance: boolean = true,
+    usageUnit?: string
   ): Promise<LeaveHistory> {
     await delay(50);
 
@@ -53,6 +57,10 @@ export const leaveHistoryService = {
       year,
       type,
       days,
+      actualDays,
+      leaveTypeName,
+      usageUnit,
+      affectsLeaveBalance,
       reason,
       leaveRequestId,
       occurredAt: new Date().toISOString(),

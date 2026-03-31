@@ -193,10 +193,16 @@ export function EmployeeLeaveManagementDialog({
                     </TableCell>
                     <TableCell>{leaveTypeMap.get(request.leaveTypeId)}</TableCell>
                     <TableCell>
-                      {formatDate(request.startDate)} ~{' '}
-                      {formatDate(request.endDate)}
+                      {request.startDate === request.endDate
+                        ? formatDate(request.startDate)
+                        : `${formatDate(request.startDate)} ~ ${formatDate(request.endDate)}`}
                     </TableCell>
-                    <TableCell>{request.workingDays}일</TableCell>
+                    <TableCell>
+                      {request.usageUnit === 'morning' && `오전반차(${request.workingDays}일)`}
+                      {request.usageUnit === 'afternoon' && `오후반차(${request.workingDays}일)`}
+                      {request.usageUnit?.endsWith('hour') && `${request.usageUnit.replace('hour', '')}시간(${request.workingDays}일)`}
+                      {(!request.usageUnit || request.usageUnit === 'day') && `${request.workingDays}일`}
+                    </TableCell>
                     <TableCell className="max-w-[200px] truncate">
                       {request.reason}
                     </TableCell>

@@ -23,7 +23,7 @@ import { employeeService } from '../services/employeeService';
 import type { LeaveSettings } from '../types/leave';
 import { getEmploymentStatus } from '../types/employee';
 
-export function LeaveSettings(): JSX.Element {
+export function LeaveGrantSettings(): JSX.Element {
   const [settings, setSettings] = useState<LeaveSettings | null>(null);
   const [selectedGrantType, setSelectedGrantType] = useState<'join_date' | 'year_start'>(
     'join_date'
@@ -300,4 +300,3 @@ export function LeaveSettings(): JSX.Element {
     </div>
   );
 }
-

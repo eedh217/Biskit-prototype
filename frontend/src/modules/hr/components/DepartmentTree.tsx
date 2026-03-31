@@ -385,8 +385,11 @@ export function DepartmentTree({
             <Plus className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-slate-500">부서를 추가해주세요.</p>
+        <div className="flex-1 pt-12">
+          <div className="text-center text-gray-500">
+            <p>등록된 부서가 없습니다.</p>
+            <p className="text-sm mt-1">+ 버튼을 눌러 부서를 등록해보세요.</p>
+          </div>
         </div>
       </div>
     );

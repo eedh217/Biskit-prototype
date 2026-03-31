@@ -1,16 +1,8 @@
 /**
- * 휴가 유형
+ * 휴가 유형 (VacationType의 별칭)
+ * @deprecated VacationType을 직접 사용하세요
  */
-export interface LeaveType {
-  id: string;
-  name: string; // 연차, 반차(오전), 반차(오후)
-  deductionDays: number; // 차감 일수 (1.0, 0.5)
-  code: 'annual' | 'half_morning' | 'half_afternoon'; // 코드
-  order: number; // 표시순서
-  isActive: boolean; // 활성화 여부
-  createdAt: string;
-  updatedAt: string;
-}
+export type { VacationType as LeaveType } from './vacation';
 
 /**
  * 휴가 신청
@@ -19,6 +11,7 @@ export interface LeaveRequest {
   id: string;
   employeeId: string;
   leaveTypeId: string; // 휴가유형 ID
+  usageUnit?: string; // 사용 단위 (day, morning, afternoon, 1hour~8hour)
   startDate: string; // YYYYMMDD
   endDate: string; // YYYYMMDD
   workingDays: number; // 실제 차감 일수 (평일 기준, 공휴일 제외)
@@ -54,7 +47,11 @@ export interface LeaveHistory {
   employeeId: string;
   year: number;
   type: 'grant' | 'use' | 'cancel' | 'adjust'; // 발생/사용/취소/조정
-  days: number; // 일수 (+ or -)
+  days: number; // 연차 잔액 변동량 (+ or -, 차감 없으면 0)
+  actualDays: number; // 실제 사용 일수 (표시용)
+  leaveTypeName: string | null; // 휴가 이름 (표시용, 예: "배우자 출산휴가")
+  usageUnit?: string; // 사용 단위 (day, morning, afternoon, 1hour~8hour)
+  affectsLeaveBalance: boolean; // 연차 차감 여부 (색상 결정용)
   reason: string; // 사유
   leaveRequestId: string | null; // 연관된 신청 ID
   occurredAt: string; // 발생일시
@@ -88,6 +85,7 @@ export interface Holiday {
 export interface CreateLeaveRequestDto {
   employeeId: string;
   leaveTypeId: string;
+  usageUnit?: string; // 사용 단위 (day, morning, afternoon, 1hour~8hour)
   startDate: string;
   endDate: string;
   reason: string;

@@ -66,16 +66,20 @@ export const leaveRequestService = {
   async create(dto: CreateLeaveRequestDto): Promise<LeaveRequest> {
     await delay(100);
 
-    // 공휴일 목록 조회
-    const holidays = await holidayService.getAll();
+    let workingDays = 0;
 
-    // 평일 일수 계산 (주말/공휴일 제외)
-    let workingDays = calculateWorkingDays(dto.startDate, dto.endDate, holidays);
-
-    // 반차인 경우 0.5일로 고정
-    const leaveType = await leaveTypeService.getById(dto.leaveTypeId);
-    if (leaveType && leaveType.deductionDays === 0.5) {
+    // usageUnit에 따라 차감 일수 계산
+    if (dto.usageUnit === 'morning' || dto.usageUnit === 'afternoon') {
+      // 오전/오후 반차: 0.5일
       workingDays = 0.5;
+    } else if (dto.usageUnit?.endsWith('hour')) {
+      // 시간 단위: N/8일
+      const hours = parseInt(dto.usageUnit.replace('hour', ''));
+      workingDays = hours / 8;
+    } else {
+      // 일 단위 또는 usageUnit이 없는 경우: 평일 계산
+      const holidays = await holidayService.getAll();
+      workingDays = calculateWorkingDays(dto.startDate, dto.endDate, holidays);
     }
 
     const newRequest: LeaveRequest = {
@@ -126,20 +130,30 @@ export const leaveRequestService = {
     data[index] = updatedRequest;
     saveData(data);
 
-    // 연차 이력 추가 (사용)
-    const year = parseInt(request.startDate.slice(0, 4));
-    const dateRange = request.startDate === request.endDate
-      ? formatDate(request.startDate)
-      : `${formatDate(request.startDate)} ~ ${formatDate(request.endDate)}`;
+    // 모든 휴가에 대해 이력 추가
+    const leaveType = await leaveTypeService.getById(request.leaveTypeId);
+    if (leaveType) {
+      const year = parseInt(request.startDate.slice(0, 4));
+      const dateRange = request.startDate === request.endDate
+        ? formatDate(request.startDate)
+        : `${formatDate(request.startDate)} ~ ${formatDate(request.endDate)}`;
 
-    await leaveHistoryService.create(
-      request.employeeId,
-      year,
-      'use',
-      -request.workingDays, // 마이너스로 차감
-      `휴가 사용 (${dateRange})`,
-      request.id
-    );
+      // 연차 잔액에 영향이 있는 경우: 실제 차감, 없는 경우: 0일 (이력만 기록)
+      const daysChange = leaveType.affectsLeaveBalance ? -request.workingDays : 0;
+
+      await leaveHistoryService.create(
+        request.employeeId,
+        year,
+        'use',
+        daysChange,
+        `${dateRange}`,
+        request.id,
+        request.workingDays, // actualDays
+        leaveType.name, // leaveTypeName
+        leaveType.affectsLeaveBalance, // affectsLeaveBalance
+        request.usageUnit // usageUnit
+      );
+    }
 
     return updatedRequest;
   },
@@ -239,20 +253,30 @@ export const leaveRequestService = {
     data[index] = updatedRequest;
     saveData(data);
 
-    // 연차 이력 추가 (복원)
-    const year = parseInt(request.startDate.slice(0, 4));
-    const dateRange = request.startDate === request.endDate
-      ? formatDate(request.startDate)
-      : `${formatDate(request.startDate)} ~ ${formatDate(request.endDate)}`;
+    // 모든 휴가에 대해 이력 추가 (복원)
+    const leaveType = await leaveTypeService.getById(request.leaveTypeId);
+    if (leaveType) {
+      const year = parseInt(request.startDate.slice(0, 4));
+      const dateRange = request.startDate === request.endDate
+        ? formatDate(request.startDate)
+        : `${formatDate(request.startDate)} ~ ${formatDate(request.endDate)}`;
 
-    await leaveHistoryService.create(
-      request.employeeId,
-      year,
-      'cancel',
-      request.workingDays, // 양수로 복원
-      `휴가 승인 취소 (${dateRange})`,
-      request.id
-    );
+      // 연차 잔액에 영향이 있는 경우: 실제 복원, 없는 경우: 0일 (이력만 기록)
+      const daysChange = leaveType.affectsLeaveBalance ? request.workingDays : 0;
+
+      await leaveHistoryService.create(
+        request.employeeId,
+        year,
+        'cancel',
+        daysChange,
+        `${dateRange} (승인 취소)`,
+        request.id,
+        request.workingDays, // actualDays
+        leaveType.name, // leaveTypeName
+        leaveType.affectsLeaveBalance, // affectsLeaveBalance
+        request.usageUnit // usageUnit
+      );
+    }
 
     return updatedRequest;
   },
@@ -290,20 +314,30 @@ export const leaveRequestService = {
     data[index] = updatedRequest;
     saveData(data);
 
-    // 연차 이력 추가 (사용)
-    const year = parseInt(request.startDate.slice(0, 4));
-    const dateRange = request.startDate === request.endDate
-      ? formatDate(request.startDate)
-      : `${formatDate(request.startDate)} ~ ${formatDate(request.endDate)}`;
+    // 모든 휴가에 대해 이력 추가
+    const leaveType = await leaveTypeService.getById(request.leaveTypeId);
+    if (leaveType) {
+      const year = parseInt(request.startDate.slice(0, 4));
+      const dateRange = request.startDate === request.endDate
+        ? formatDate(request.startDate)
+        : `${formatDate(request.startDate)} ~ ${formatDate(request.endDate)}`;
 
-    await leaveHistoryService.create(
-      request.employeeId,
-      year,
-      'use',
-      -request.workingDays, // 마이너스로 차감
-      `휴가 사용 (${dateRange})`,
-      request.id
-    );
+      // 연차 잔액에 영향이 있는 경우: 실제 차감, 없는 경우: 0일 (이력만 기록)
+      const daysChange = leaveType.affectsLeaveBalance ? -request.workingDays : 0;
+
+      await leaveHistoryService.create(
+        request.employeeId,
+        year,
+        'use',
+        daysChange,
+        `${dateRange}`,
+        request.id,
+        request.workingDays, // actualDays
+        leaveType.name, // leaveTypeName
+        leaveType.affectsLeaveBalance, // affectsLeaveBalance
+        request.usageUnit // usageUnit
+      );
+    }
 
     return updatedRequest;
   },

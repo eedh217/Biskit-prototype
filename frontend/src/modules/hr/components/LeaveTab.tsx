@@ -179,7 +179,7 @@ export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.
         <div className="rounded-lg border bg-white p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">{currentYear}년 연차 현황</h3>
-            <Button onClick={() => setShowCreateDialog(true)}>+ 연차 신청</Button>
+            <Button onClick={() => setShowCreateDialog(true)}>+ 휴가 신청</Button>
           </div>
 
           <div className="grid grid-cols-4 gap-6">
@@ -245,10 +245,16 @@ export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.
                     </TableCell>
                     <TableCell>{leaveTypeMap.get(request.leaveTypeId)}</TableCell>
                     <TableCell>
-                      {formatDate(request.startDate)} ~{' '}
-                      {formatDate(request.endDate)}
+                      {request.startDate === request.endDate
+                        ? formatDate(request.startDate)
+                        : `${formatDate(request.startDate)} ~ ${formatDate(request.endDate)}`}
                     </TableCell>
-                    <TableCell>{request.workingDays}일</TableCell>
+                    <TableCell>
+                      {request.usageUnit === 'morning' && `오전반차(${request.workingDays}일)`}
+                      {request.usageUnit === 'afternoon' && `오후반차(${request.workingDays}일)`}
+                      {request.usageUnit?.endsWith('hour') && `${request.usageUnit.replace('hour', '')}시간(${request.workingDays}일)`}
+                      {(!request.usageUnit || request.usageUnit === 'day') && `${request.workingDays}일`}
+                    </TableCell>
                     <TableCell className="max-w-[200px] truncate">
                       {request.reason}
                     </TableCell>
@@ -327,13 +333,21 @@ export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.
                           </span>
                           <span
                             className={
-                              item.days > 0
-                                ? 'text-green-600 font-medium'
-                                : 'text-red-600 font-medium'
+                              item.affectsLeaveBalance
+                                ? item.days > 0
+                                  ? 'text-green-600 font-medium'
+                                  : 'text-red-600 font-medium'
+                                : 'text-gray-900 font-medium'
                             }
                           >
-                            {item.days > 0 ? '+' : ''}
-                            {item.days}일
+                            {item.affectsLeaveBalance && item.days > 0 && '+'}
+                            {item.affectsLeaveBalance && item.days < 0 && '-'}
+                            {/* usageUnit에 따라 다르게 표시 */}
+                            {item.usageUnit === 'morning' && `오전반차(${item.actualDays}일)`}
+                            {item.usageUnit === 'afternoon' && `오후반차(${item.actualDays}일)`}
+                            {item.usageUnit?.endsWith('hour') && `${item.usageUnit.replace('hour', '')}시간(${item.actualDays}일)`}
+                            {(!item.usageUnit || item.usageUnit === 'day') && `${item.actualDays}일`}
+                            {item.leaveTypeName && ` (${item.leaveTypeName})`}
                           </span>
                         </div>
                         <div className="flex items-start gap-2 text-sm">

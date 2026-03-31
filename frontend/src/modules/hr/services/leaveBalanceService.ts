@@ -4,6 +4,7 @@ import type { Employee } from '../types/employee';
 import { calculateAnnualLeave } from '../utils/leaveCalculation';
 import { leaveSettingsService } from './leaveSettingsService';
 import { leaveRequestService } from './leaveRequestService';
+import { leaveTypeService } from './leaveTypeService';
 
 const STORAGE_KEY = 'biskit_leave_balances';
 
@@ -107,14 +108,24 @@ export const leaveBalanceService = {
   },
 
   /**
-   * 사용일수 계산 (승인된 신청만)
+   * 사용일수 계산 (승인된 신청만, 연차 잔액에 영향이 있는 휴가만)
    */
   async calculateUsedDays(employeeId: string, year: number): Promise<number> {
     const requests = await leaveRequestService.getByEmployee(employeeId);
     const approvedRequests = requests.filter(
       (r) => r.status === 'approved' && r.startDate.startsWith(String(year))
     );
-    return approvedRequests.reduce((sum, r) => sum + r.workingDays, 0);
+
+    // 연차 잔액에 영향이 있는 휴가만 합산
+    let usedDays = 0;
+    for (const request of approvedRequests) {
+      const leaveType = await leaveTypeService.getById(request.leaveTypeId);
+      if (leaveType && leaveType.affectsLeaveBalance) {
+        usedDays += request.workingDays;
+      }
+    }
+
+    return usedDays;
   },
 
   /**
@@ -147,7 +158,7 @@ export const leaveBalanceService = {
   },
 
   /**
-   * 연차 잔액 요약 (대기중 포함)
+   * 연차 잔액 요약 (대기중 포함, 연차 잔액에 영향이 있는 휴가만)
    */
   async getSummary(
     employeeId: string,
@@ -156,12 +167,20 @@ export const leaveBalanceService = {
   ): Promise<LeaveBalanceSummary> {
     const balance = await this.getByEmployeeAndYear(employeeId, year, employee);
 
-    // 대기중인 신청 일수
+    // 대기중인 신청 일수 (연차 잔액에 영향이 있는 휴가만)
     const requests = await leaveRequestService.getByEmployee(employeeId);
     const pendingRequests = requests.filter(
       (r) => r.status === 'pending' && r.startDate.startsWith(String(year))
     );
-    const pendingDays = pendingRequests.reduce((sum, r) => sum + r.workingDays, 0);
+
+    // 연차 잔액에 영향이 있는 휴가만 합산
+    let pendingDays = 0;
+    for (const request of pendingRequests) {
+      const leaveType = await leaveTypeService.getById(request.leaveTypeId);
+      if (leaveType && leaveType.affectsLeaveBalance) {
+        pendingDays += request.workingDays;
+      }
+    }
 
     return {
       year: balance.year,

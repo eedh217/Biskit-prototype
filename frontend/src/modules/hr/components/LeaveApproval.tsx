@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -16,6 +17,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/shared/components/ui/popover';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Label } from '@/shared/components/ui/label';
 import { toast } from '@/shared/hooks/use-toast';
@@ -34,6 +40,8 @@ export function LeaveApproval(): JSX.Element {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
+  const [showBulkApprovePopover, setShowBulkApprovePopover] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -126,6 +134,90 @@ export function LeaveApproval(): JSX.Element {
     }
   };
 
+  const handleBulkApproveAll = async (): Promise<void> => {
+    setShowBulkApprovePopover(false);
+
+    try {
+      const totalCount = requests.length;
+
+      // 모든 신청 승인
+      await Promise.all(
+        requests.map((req) =>
+          leaveRequestService.approve(req.id, { approvedBy: 'admin' })
+        )
+      );
+
+      toast({
+        title: '승인 완료',
+        description: `총 ${totalCount}개의 휴가 승인을 완료했습니다.`,
+      });
+
+      setSelectedRequests(new Set());
+      loadData();
+    } catch (error) {
+      console.error('Failed to bulk approve:', error);
+      toast({
+        title: '승인 실패',
+        description: '일괄 승인에 실패했습니다.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleBulkApproveSelected = async (): Promise<void> => {
+    if (selectedRequests.size === 0) {
+      alert('선택된 신청내역이 없습니다. 목록 내 좌측 신청내역을 선택해주세요.');
+      return;
+    }
+
+    setShowBulkApprovePopover(false);
+
+    try {
+      const selectedCount = selectedRequests.size;
+      const selectedIds = Array.from(selectedRequests);
+
+      // 선택된 신청만 승인
+      await Promise.all(
+        selectedIds.map((id) =>
+          leaveRequestService.approve(id, { approvedBy: 'admin' })
+        )
+      );
+
+      toast({
+        title: '승인 완료',
+        description: `총 ${selectedCount}개의 휴가 승인을 완료했습니다.`,
+      });
+
+      setSelectedRequests(new Set());
+      loadData();
+    } catch (error) {
+      console.error('Failed to bulk approve selected:', error);
+      toast({
+        title: '승인 실패',
+        description: '일괄 승인에 실패했습니다.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleCheckboxChange = (requestId: string, checked: boolean): void => {
+    const newSelected = new Set(selectedRequests);
+    if (checked) {
+      newSelected.add(requestId);
+    } else {
+      newSelected.delete(requestId);
+    }
+    setSelectedRequests(newSelected);
+  };
+
+  const handleSelectAll = (checked: boolean): void => {
+    if (checked) {
+      setSelectedRequests(new Set(requests.map((req) => req.id)));
+    } else {
+      setSelectedRequests(new Set());
+    }
+  };
+
   if (isLoading) {
     return <div>로딩 중...</div>;
   }
@@ -140,15 +232,45 @@ export function LeaveApproval(): JSX.Element {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 mb-4">
-        <h3 className="text-lg font-semibold">대기중인 휴가 신청</h3>
-        <Badge variant="warning">{requests.length}건</Badge>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold">대기중인 휴가 신청</h3>
+          <Badge variant="warning">{requests.length}건</Badge>
+        </div>
+
+        {requests.length > 0 && (
+          <Popover open={showBulkApprovePopover} onOpenChange={setShowBulkApprovePopover}>
+            <PopoverTrigger asChild>
+              <Button variant="default">일괄승인</Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-1" align="end">
+              <button
+                onClick={handleBulkApproveAll}
+                className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                전체 신청내역({requests.length})
+              </button>
+              <button
+                onClick={handleBulkApproveSelected}
+                className="w-full text-left px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                선택 신청내역({selectedRequests.size})
+              </button>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
 
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  checked={selectedRequests.size === requests.length && requests.length > 0}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                />
+              </TableHead>
               <TableHead>신청일</TableHead>
               <TableHead>신청자</TableHead>
               <TableHead>유형</TableHead>
@@ -162,6 +284,12 @@ export function LeaveApproval(): JSX.Element {
             {requests.map((request) => (
               <TableRow key={request.id}>
                 <TableCell>
+                  <Checkbox
+                    checked={selectedRequests.has(request.id)}
+                    onChange={(e) => handleCheckboxChange(request.id, e.target.checked)}
+                  />
+                </TableCell>
+                <TableCell>
                   {new Date(request.requestedAt).toLocaleDateString()}
                 </TableCell>
                 <TableCell className="font-medium">
@@ -169,9 +297,16 @@ export function LeaveApproval(): JSX.Element {
                 </TableCell>
                 <TableCell>{leaveTypeMap.get(request.leaveTypeId)}</TableCell>
                 <TableCell>
-                  {formatDate(request.startDate)} ~ {formatDate(request.endDate)}
+                  {request.startDate === request.endDate
+                    ? formatDate(request.startDate)
+                    : `${formatDate(request.startDate)} ~ ${formatDate(request.endDate)}`}
                 </TableCell>
-                <TableCell>{request.workingDays}일</TableCell>
+                <TableCell>
+                  {request.usageUnit === 'morning' && `오전반차(${request.workingDays}일)`}
+                  {request.usageUnit === 'afternoon' && `오후반차(${request.workingDays}일)`}
+                  {request.usageUnit?.endsWith('hour') && `${request.usageUnit.replace('hour', '')}시간(${request.workingDays}일)`}
+                  {(!request.usageUnit || request.usageUnit === 'day') && `${request.workingDays}일`}
+                </TableCell>
                 <TableCell className="max-w-[200px]">
                   <div className="truncate" title={request.reason}>
                     {request.reason}
