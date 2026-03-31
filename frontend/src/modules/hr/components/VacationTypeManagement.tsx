@@ -5,7 +5,7 @@ import { CardContent } from '@/shared/components/ui/card';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { useToast } from '@/shared/hooks/use-toast';
 import { vacationTypeService } from '../services/vacationTypeService';
-import type { VacationType, CreateVacationTypeDto, UsageUnit } from '../types/vacation';
+import type { VacationType, CreateVacationTypeDto } from '../types/vacation';
 import {
   DndContext,
   closestCenter,
@@ -27,20 +27,12 @@ import { GripVertical, Plus, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Label } from '@/shared/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/ui/select';
 import { Textarea } from '@/shared/components/ui/textarea';
 
 interface SortableItemProps {
