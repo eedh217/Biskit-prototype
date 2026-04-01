@@ -24,6 +24,7 @@ import type { LeaveType, LeaveBalanceSummary } from '../types/leave';
 import { leaveTypeService } from '../services/leaveTypeService';
 import { leaveRequestService } from '../services/leaveRequestService';
 import { leaveBalanceService } from '../services/leaveBalanceService';
+import { leaveSettingsService } from '../services/leaveSettingsService';
 import { calculateWorkingDays } from '../utils/dateUtils';
 import { holidayService } from '../services/holidayService';
 
@@ -43,6 +44,7 @@ export function CreateLeaveRequestDialog({
   const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
   const [balance, setBalance] = useState<LeaveBalanceSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hourlyLeaveEnabled, setHourlyLeaveEnabled] = useState(true);
 
   const [leaveTypeId, setLeaveTypeId] = useState('');
   const [usageUnit, setUsageUnit] = useState<string>(''); // 선택한 사용 단위
@@ -69,6 +71,10 @@ export function CreateLeaveRequestDialog({
         employee
       );
       setBalance(balanceSummary);
+
+      // 시간 단위 사용 설정 로드
+      const settings = await leaveSettingsService.get();
+      setHourlyLeaveEnabled(settings.hourlyLeaveEnabled);
     } catch (error) {
       console.error('Failed to load leave data:', error);
     }
@@ -91,8 +97,8 @@ export function CreateLeaveRequestDialog({
         { value: 'afternoon', label: '오후 반차' }
       );
     }
-    // 시간 단위가 포함되어 있으면 1~8시간 추가
-    if (selectedType.usageUnits.includes('hour')) {
+    // 시간 단위가 포함되어 있고, 시간 단위 사용이 활성화된 경우에만 1~8시간 추가
+    if (selectedType.usageUnits.includes('hour') && hourlyLeaveEnabled) {
       for (let i = 1; i <= 8; i++) {
         usageUnitOptions.push({ value: `${i}hour`, label: `${i}시간` });
       }

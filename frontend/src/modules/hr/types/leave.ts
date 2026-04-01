@@ -62,6 +62,7 @@ export interface LeaveHistory {
  * 연차 발생 기준 설정
  */
 export interface LeaveSettings {
+  hourlyLeaveEnabled: boolean; // 시간 단위 연차/휴가 사용 여부
   grantType: 'join_date' | 'year_start'; // 입사일 기준 / 연초 기준
   roundingMethod: 'floor' | 'ceil'; // 비례부여 소수점 처리 (버림/올림)
   updatedAt: string;

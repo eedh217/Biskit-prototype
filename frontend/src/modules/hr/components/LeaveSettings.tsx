@@ -3,6 +3,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
 import { Label } from '@/shared/components/ui/label';
+import { Switch } from '@/shared/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -20,32 +21,52 @@ import { toast } from '@/shared/hooks/use-toast';
 import { leaveSettingsService } from '../services/leaveSettingsService';
 import { leaveBalanceService } from '../services/leaveBalanceService';
 import { employeeService } from '../services/employeeService';
+import { vacationTypeService } from '../services/vacationTypeService';
 import type { LeaveSettings } from '../types/leave';
+import type { VacationType } from '../types/vacation';
 import { getEmploymentStatus } from '../types/employee';
 
 export function LeaveSettings(): JSX.Element {
   const [settings, setSettings] = useState<LeaveSettings | null>(null);
+  const [selectedHourlyLeaveEnabled, setSelectedHourlyLeaveEnabled] = useState(true);
   const [selectedGrantType, setSelectedGrantType] = useState<'join_date' | 'year_start'>(
     'join_date'
   );
   const [selectedRoundingMethod, setSelectedRoundingMethod] = useState<'floor' | 'ceil'>('floor');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingHourly, setIsSavingHourly] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [hasChangesForHourly, setHasChangesForHourly] = useState(false);
+  const [hourlyVacationTypes, setHourlyVacationTypes] = useState<VacationType[]>([]);
 
   useEffect(() => {
     loadSettings();
+    loadVacationTypes();
   }, []);
+
+  const loadVacationTypes = async (): Promise<void> => {
+    try {
+      const types = await vacationTypeService.getAll();
+      // 시간 단위가 포함된 휴가 종류만 필터링
+      const hourlyTypes = types.filter((type) => type.usageUnits.includes('hour'));
+      setHourlyVacationTypes(hourlyTypes);
+    } catch (error) {
+      console.error('Failed to load vacation types:', error);
+    }
+  };
 
   const loadSettings = async (): Promise<void> => {
     setIsLoading(true);
     try {
       const currentSettings = await leaveSettingsService.get();
       setSettings(currentSettings);
+      setSelectedHourlyLeaveEnabled(currentSettings.hourlyLeaveEnabled);
       setSelectedGrantType(currentSettings.grantType);
       setSelectedRoundingMethod(currentSettings.roundingMethod);
       setHasChanges(false);
+      setHasChangesForHourly(false);
     } catch (error) {
       console.error('Failed to load settings:', error);
     } finally {
@@ -69,8 +90,64 @@ export function LeaveSettings(): JSX.Element {
     );
   };
 
+  const handleHourlyLeaveEnabledChange = (checked: boolean): void => {
+    setSelectedHourlyLeaveEnabled(checked);
+    setHasChangesForHourly(settings?.hourlyLeaveEnabled !== checked);
+  };
+
+  const handleSaveHourly = async (): Promise<void> => {
+    if (!hasChangesForHourly || !settings) return;
+
+    const confirmMessage = selectedHourlyLeaveEnabled
+      ? '연차/휴가 시간 단위 사용을 허용하시겠습니까?'
+      : '연차/휴가 시간 단위 사용을 제한하시겠습니까?';
+
+    if (!confirm(confirmMessage)) return;
+
+    setIsSavingHourly(true);
+    try {
+      // 설정 업데이트
+      await leaveSettingsService.update(
+        selectedHourlyLeaveEnabled,
+        settings.grantType,
+        settings.roundingMethod,
+        'admin'
+      ); // TODO: 실제 로그인 사용자 ID
+
+      // 시간 단위만 설정된 휴가 종류의 활성/비활성 처리
+      const allTypes = await vacationTypeService.getAll();
+      const hourOnlyTypes = allTypes.filter(
+        (type) => type.usageUnits.length === 1 && type.usageUnits[0] === 'hour'
+      );
+
+      for (const type of hourOnlyTypes) {
+        if (type.isActive !== selectedHourlyLeaveEnabled) {
+          await vacationTypeService.toggleActive(type.id);
+        }
+      }
+
+      toast({
+        title: '설정 변경 완료',
+        description: `시간 단위 연차/휴가 사용이 ${selectedHourlyLeaveEnabled ? '활성화' : '비활성화'}되었습니다.`,
+      });
+
+      // 설정 및 휴가 종류 다시 로드
+      await loadSettings();
+      await loadVacationTypes();
+    } catch (error) {
+      console.error('Failed to save hourly leave settings:', error);
+      toast({
+        title: '설정 변경 실패',
+        description: '설정 변경에 실패했습니다.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingHourly(false);
+    }
+  };
+
   const handleSave = async (): Promise<void> => {
-    if (!hasChanges) return;
+    if (!hasChanges || !settings) return;
 
     const confirmMessage =
       '⚠️ 연차 발생 기준을 변경하면 모든 직원의 연차 현황에 영향을 미칩니다.\n' +
@@ -83,6 +160,7 @@ export function LeaveSettings(): JSX.Element {
     try {
       // 설정 업데이트
       await leaveSettingsService.update(
+        settings.hourlyLeaveEnabled,
         selectedGrantType,
         selectedRoundingMethod,
         'admin'
@@ -154,15 +232,95 @@ export function LeaveSettings(): JSX.Element {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>주의</AlertTitle>
-        <AlertDescription>
-          연차 발생 기준을 변경하면 모든 직원의 연차 현황이 자동으로 재계산됩니다.
-          변경 전에 신중히 검토해주세요.
-        </AlertDescription>
-      </Alert>
+      {/* 시간 단위 사용 설정 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>연차/휴가 시간 단위 사용</CardTitle>
+          <CardDescription>
+            임직원이 연차/휴가를 시간 단위로 사용할 수 있는지 설정합니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="flex-1">
+              <div className="font-medium mb-1">시간 단위 사용</div>
+              <div className="text-sm text-gray-600">
+                활성화 시, 임직원은 1시간 단위로 연차/휴가를 사용할 수 있습니다. (1시간 = 0.125일)
+              </div>
+            </div>
+            <Switch
+              checked={selectedHourlyLeaveEnabled}
+              onCheckedChange={handleHourlyLeaveEnabledChange}
+            />
+          </div>
 
+          {hasChangesForHourly && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>주의</AlertTitle>
+              <AlertDescription>
+                {selectedHourlyLeaveEnabled ? (
+                  <div className="space-y-2">
+                    <div>
+                      on으로 변경 시, 임직원은 연차/휴가를 시간 단위로 사용할 수 있으며, 1시간 사용 시 0.125일이 차감됩니다.
+                    </div>
+                    {hourlyVacationTypes.length > 0 && (
+                      <div className="pt-2 border-t border-red-200">
+                        <div>또한, 시간 단위 사용이 설정된 휴가 종류도 시간 단위 사용이 허용됩니다.</div>
+                        <div className="mt-1">
+                          <span className="font-medium">영향 휴가 종류: {hourlyVacationTypes.length}개</span>
+                          <div className="text-sm">({hourlyVacationTypes.map((vt) => vt.name).join(', ')})</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div>
+                      off로 변경 시, 임직원이 보유한 시간 단위 잔여 연차/휴가(예: 0.125일, 0.25일 등)는 더 이상 사용할 수 없습니다.
+                      <br />
+                      변경 전에 잔여 연차/휴가 사용 여부를 확인해주세요.
+                    </div>
+                    {hourlyVacationTypes.length > 0 && (
+                      <div className="pt-2 border-t border-red-200">
+                        <div>또한, 시간 단위 사용이 설정된 휴가 종류에서도 시간 단위 사용이 제한됩니다.</div>
+                        <div className="mt-1">
+                          <span className="font-medium">영향 휴가 종류: {hourlyVacationTypes.length}개</span>
+                          <div className="text-sm">({hourlyVacationTypes.map((vt) => vt.name).join(', ')})</div>
+                        </div>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-red-200 text-sm">
+                      ※ 이미 대기중인 시간 단위 신청은 유지되며, 정상적으로 승인/반려 처리할 수 있습니다.
+                    </div>
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex items-center gap-3">
+            <Button
+              variant="default"
+              onClick={handleSaveHourly}
+              disabled={!hasChangesForHourly || isSavingHourly}
+            >
+              {isSavingHourly ? '저장 중...' : '저장'}
+            </Button>
+            {hasChangesForHourly && (
+              <Button
+                variant="outline"
+                onClick={loadSettings}
+                disabled={isSavingHourly}
+              >
+                취소
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 연차 발생 기준 */}
       <Card>
         <CardHeader>
           <CardTitle>연차 발생 기준</CardTitle>
@@ -235,6 +393,17 @@ export function LeaveSettings(): JSX.Element {
             </div>
           </RadioGroup>
 
+          {hasChanges && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>주의</AlertTitle>
+              <AlertDescription>
+                연차 발생 기준을 변경하면 모든 직원의 연차 현황이 자동으로 재계산됩니다.
+                변경 전에 신중히 검토해주세요.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex items-center gap-3">
             <Button
               variant="default"
@@ -270,6 +439,12 @@ export function LeaveSettings(): JSX.Element {
             <CardTitle className="text-base">현재 설정 정보</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
+            <div className="grid grid-cols-3 gap-4">
+              <span className="text-gray-500">시간 단위 사용</span>
+              <span className="col-span-2 font-medium">
+                {settings.hourlyLeaveEnabled ? '활성화' : '비활성화'}
+              </span>
+            </div>
             <div className="grid grid-cols-3 gap-4">
               <span className="text-gray-500">현재 발생 기준</span>
               <span className="col-span-2 font-medium">

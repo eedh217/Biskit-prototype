@@ -6,6 +6,7 @@ const STORAGE_KEY = 'biskit_leave_settings';
  * 기본 설정: 입사일 기준
  */
 const DEFAULT_SETTINGS: LeaveSettings = {
+  hourlyLeaveEnabled: true, // 기본값: 시간 단위 사용 활성화
   grantType: 'join_date',
   roundingMethod: 'floor', // 기본값: 버림
   updatedAt: new Date().toISOString(),
@@ -38,12 +39,14 @@ export const leaveSettingsService = {
    * 설정 변경
    */
   async update(
+    hourlyLeaveEnabled: boolean,
     grantType: 'join_date' | 'year_start',
     roundingMethod: 'floor' | 'ceil',
     updatedBy: string
   ): Promise<LeaveSettings> {
     await delay(50);
     const settings: LeaveSettings = {
+      hourlyLeaveEnabled,
       grantType,
       roundingMethod,
       updatedAt: new Date().toISOString(),

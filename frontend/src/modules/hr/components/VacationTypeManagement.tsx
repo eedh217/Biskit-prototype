@@ -5,6 +5,7 @@ import { CardContent } from '@/shared/components/ui/card';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { useToast } from '@/shared/hooks/use-toast';
 import { vacationTypeService } from '../services/vacationTypeService';
+import { leaveSettingsService } from '../services/leaveSettingsService';
 import type { VacationType, CreateVacationTypeDto } from '../types/vacation';
 import {
   DndContext,
@@ -365,6 +366,23 @@ export function VacationTypeManagement(): JSX.Element {
     if (!vacationType) return;
 
     const newStatus = !vacationType.isActive;
+
+    // 시간 단위만 설정된 휴가를 활성화하려고 할 때 체크
+    if (
+      !vacationType.isActive &&
+      vacationType.usageUnits.length === 1 &&
+      vacationType.usageUnits[0] === 'hour'
+    ) {
+      try {
+        const settings = await leaveSettingsService.get();
+        if (!settings.hourlyLeaveEnabled) {
+          alert('연차/휴가 시간 단위 설정이 off 상태일 경우, 시간 단위만 사용 가능한 휴가는 활성화 시킬 수 없습니다.');
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    }
 
     try {
       await vacationTypeService.toggleActive(id);
