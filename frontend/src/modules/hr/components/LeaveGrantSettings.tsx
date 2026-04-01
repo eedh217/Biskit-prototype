@@ -70,7 +70,7 @@ export function LeaveGrantSettings(): JSX.Element {
   };
 
   const handleSave = async (): Promise<void> => {
-    if (!hasChanges) return;
+    if (!hasChanges || !settings) return;
 
     const confirmMessage =
       '⚠️ 연차 발생 기준을 변경하면 모든 직원의 연차 현황에 영향을 미칩니다.\n' +
@@ -83,6 +83,7 @@ export function LeaveGrantSettings(): JSX.Element {
     try {
       // 설정 업데이트
       await leaveSettingsService.update(
+        settings.hourlyLeaveEnabled,
         selectedGrantType,
         selectedRoundingMethod,
         'admin'
