@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Card, CardContent } from '@/shared/components/ui/card';
 import type { EmployeeHistory, HistoryCategory } from '../types/employeeHistory';
 import { employeeHistoryService } from '../services/employeeHistoryService';
@@ -14,7 +14,9 @@ export function EmployeeHistoryTimeline({
   category,
 }: EmployeeHistoryTimelineProps): JSX.Element {
   const [history, setHistory] = useState<EmployeeHistory[]>([]);
+  const [displayCount, setDisplayCount] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadHistory = async (): Promise<void> => {
@@ -25,6 +27,7 @@ export function EmployeeHistoryTimeline({
           category
         );
         setHistory(data);
+        setDisplayCount(10); // 초기화
       } catch (error) {
         console.error('Failed to load employee history:', error);
       } finally {
@@ -34,6 +37,25 @@ export function EmployeeHistoryTimeline({
 
     loadHistory();
   }, [employeeId, category]);
+
+  // 무한 스크롤 이벤트 리스너
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = (): void => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // 스크롤이 하단 근처(50px 이내)에 도달하면 더 로드
+      if (scrollHeight - scrollTop - clientHeight < 50) {
+        if (displayCount < history.length) {
+          setDisplayCount(prev => Math.min(prev + 10, history.length));
+        }
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [displayCount, history.length]);
 
   if (isLoading) {
     return (
@@ -90,13 +112,16 @@ export function EmployeeHistoryTimeline({
     <div className="p-6">
       <h3 className="text-sm font-semibold text-gray-700 mb-4">수정 이력</h3>
 
-      <div className="relative">
-        {history.map((item, index) => (
+      <div
+        ref={scrollContainerRef}
+        className="relative max-h-[600px] overflow-y-auto"
+      >
+        {history.slice(0, displayCount).map((item, index) => (
           <div key={item.id} className="flex gap-4">
             {/* Timeline 라인 */}
             <div className="flex flex-col items-center pt-1">
               <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow"></div>
-              {index < history.length - 1 && (
+              {index < Math.min(displayCount, history.length) - 1 && (
                 <div className="w-0.5 flex-1 bg-gray-200 min-h-[80px]"></div>
               )}
             </div>

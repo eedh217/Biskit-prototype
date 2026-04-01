@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -34,9 +34,13 @@ interface LeaveTabProps {
 }
 
 export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.Element {
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
   const [balance, setBalance] = useState<LeaveBalanceSummary | null>(null);
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [displayCount, setDisplayCount] = useState(10);
   const [history, setHistory] = useState<LeaveHistory[]>([]);
+  const [historyDisplayCount, setHistoryDisplayCount] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
@@ -45,12 +49,79 @@ export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.
   const [leaveRequestMap, setLeaveRequestMap] = useState<Map<string, LeaveRequest>>(
     new Map()
   );
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const historyScrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const currentYear = new Date().getFullYear();
+  // 입사년도 계산
+  const joinYear = new Date(employee.joinDate).getFullYear();
+
+  // 선택한 연도로 신청 내역 필터링 (신청일 기준)
+  const filteredRequests = useMemo(() => {
+    return requests.filter((request) => {
+      const requestYear = new Date(request.requestedAt).getFullYear();
+      return requestYear === selectedYear;
+    });
+  }, [requests, selectedYear]);
 
   useEffect(() => {
     loadData();
-  }, [employee.id]);
+  }, [employee.id, selectedYear]);
+
+  // 연도 변경 시 displayCount 초기화
+  useEffect(() => {
+    setDisplayCount(10);
+  }, [selectedYear]);
+
+  // 무한 스크롤 이벤트 리스너 (신청 내역)
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = (): void => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // 스크롤이 하단 근처(50px 이내)에 도달하면 더 로드
+      if (scrollHeight - scrollTop - clientHeight < 50) {
+        if (displayCount < filteredRequests.length) {
+          setDisplayCount(prev => Math.min(prev + 10, filteredRequests.length));
+        }
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [displayCount, filteredRequests.length]);
+
+  // 무한 스크롤 이벤트 리스너 (연차 이력)
+  useEffect(() => {
+    const container = historyScrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = (): void => {
+      const { scrollTop, scrollHeight, clientHeight } = container;
+      // 스크롤이 하단 근처(50px 이내)에 도달하면 더 로드
+      if (scrollHeight - scrollTop - clientHeight < 50) {
+        if (historyDisplayCount < history.length) {
+          setHistoryDisplayCount(prev => Math.min(prev + 10, history.length));
+        }
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [historyDisplayCount, history.length]);
+
+  // 연도 변경 핸들러
+  const handlePreviousYear = (): void => {
+    if (selectedYear > joinYear) {
+      setSelectedYear(selectedYear - 1);
+    }
+  };
+
+  const handleNextYear = (): void => {
+    if (selectedYear < currentYear + 1) {
+      setSelectedYear(selectedYear + 1);
+    }
+  };
 
   const loadData = async (): Promise<void> => {
     setIsLoading(true);
@@ -60,17 +131,21 @@ export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.
       const typeMap = new Map(types.map((t) => [t.id, t.name]));
       setLeaveTypeMap(typeMap);
 
-      // 연차 잔액
+      // 연차 잔액 (선택한 연도 기준)
       const balanceSummary = await leaveBalanceService.getSummary(
         employee.id,
-        currentYear,
+        selectedYear,
         employee
       );
       setBalance(balanceSummary);
 
-      // 신청 내역
+      // 신청 내역 (전체 로드 후 필터링 - 최근 신청순 정렬)
       const requestList = await leaveRequestService.getByEmployee(employee.id);
-      setRequests(requestList);
+      const sortedRequests = requestList.sort((a, b) =>
+        new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime()
+      );
+      setRequests(sortedRequests);
+      setDisplayCount(10); // 초기화
 
       // 신청 내역을 Map으로 저장 (이력에서 사용)
       const requestMap = new Map(requestList.map((r) => [r.id, r]));
@@ -78,12 +153,10 @@ export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.
 
       console.log('LeaveRequestMap loaded:', requestMap.size, 'requests');
 
-      // 이력
-      const historyList = await leaveHistoryService.getByEmployee(
-        employee.id,
-        currentYear
-      );
+      // 이력 (전체 연도 표시 - 필터링 안 함)
+      const historyList = await leaveHistoryService.getByEmployee(employee.id);
       setHistory(historyList);
+      setHistoryDisplayCount(10); // 초기화
 
       console.log('History loaded:', historyList.length, 'items');
       historyList.forEach(h => {
@@ -178,7 +251,27 @@ export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.
       {balance && (
         <div className="rounded-lg border bg-white p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">{currentYear}년 연차 현황</h3>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handlePreviousYear}
+                disabled={selectedYear <= joinYear}
+                className="h-8 w-8 p-0"
+              >
+                &lt;
+              </Button>
+              <h3 className="text-lg font-semibold">{selectedYear}년 연차 현황</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleNextYear}
+                disabled={selectedYear >= currentYear + 1}
+                className="h-8 w-8 p-0"
+              >
+                &gt;
+              </Button>
+            </div>
             <Button onClick={() => setShowCreateDialog(true)}>+ 휴가 신청</Button>
           </div>
 
@@ -221,10 +314,13 @@ export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.
       <div className="rounded-lg border bg-white p-6">
         <h3 className="text-lg font-semibold mb-4">신청 내역</h3>
 
-        {requests.length === 0 ? (
+        {filteredRequests.length === 0 ? (
           <div className="text-center py-8 text-gray-500">신청 내역이 없습니다.</div>
         ) : (
-          <div className="border rounded-lg max-h-[400px] overflow-y-auto">
+          <div
+            ref={scrollContainerRef}
+            className="border rounded-lg max-h-[600px] overflow-y-auto"
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -238,7 +334,7 @@ export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {requests.map((request) => (
+                {filteredRequests.slice(0, displayCount).map((request) => (
                   <TableRow key={request.id}>
                     <TableCell>
                       {new Date(request.requestedAt).toLocaleDateString()}
@@ -301,13 +397,16 @@ export function LeaveTab({ employee, showHistory = false }: LeaveTabProps): JSX.
             <p className="text-sm text-gray-500">연차 이력이 없습니다.</p>
           </div>
         ) : (
-          <div className="relative">
-            {history.map((item, index) => (
+          <div
+            ref={historyScrollContainerRef}
+            className="relative max-h-[600px] overflow-y-auto"
+          >
+            {history.slice(0, historyDisplayCount).map((item, index) => (
               <div key={item.id} className="flex gap-4">
                 {/* Timeline 라인 */}
                 <div className="flex flex-col items-center pt-1">
                   <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow"></div>
-                  {index < history.length - 1 && (
+                  {index < Math.min(historyDisplayCount, history.length) - 1 && (
                     <div className="w-0.5 flex-1 bg-gray-200 min-h-[80px]"></div>
                   )}
                 </div>

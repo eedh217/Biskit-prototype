@@ -27,9 +27,10 @@ export function parseFormattedNumber(value: string): number {
 /**
  * 인풋 필드에서 입력된 값을 포맷팅 (양수만 허용, 천 단위 콤마 추가)
  * @param value - 입력된 문자열
+ * @param maxDigits - 최대 자릿수 (기본값: 12)
  * @returns 포맷팅된 문자열 (숫자가 아닌 문자 제거, 천 단위 콤마 추가)
  */
-export function formatNumberInput(value: string): string {
+export function formatNumberInput(value: string, maxDigits: number = 12): string {
   // 숫자만 추출
   const digitsOnly = value.replace(/\D/g, '');
 
@@ -38,7 +39,10 @@ export function formatNumberInput(value: string): string {
     return '';
   }
 
+  // 최대 자릿수 제한
+  const limitedDigits = digitsOnly.slice(0, maxDigits);
+
   // 숫자로 변환 후 천 단위 콤마 추가
-  const number = parseInt(digitsOnly, 10);
+  const number = parseInt(limitedDigits, 10);
   return formatNumber(number);
 }

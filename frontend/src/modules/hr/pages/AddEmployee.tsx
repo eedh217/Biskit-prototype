@@ -292,9 +292,17 @@ export function AddEmployee(): JSX.Element {
     setFormData((prev) => {
       const newData = { ...prev, [field]: value };
 
-      // 퇴사일 변경 시 부서장 체크 검증
+      // 퇴사일 변경 시 검증 (우선순위: 입사일 관계 > 부서장 관계)
       if (field === 'leaveDate' && typeof value === 'string') {
-        if (newData.isDepartmentHead && value && isBeforeToday(value)) {
+        // 1순위: 입사일과의 관계 검증
+        if (value && newData.joinDate && value < newData.joinDate) {
+          setErrors((prevErrors) => ({
+            ...prevErrors,
+            leaveDate: '퇴사일은 입사일 이후 날짜만 입력할 수 있습니다.',
+          }));
+        }
+        // 2순위: 부서장과의 관계 검증 (입사일 관계 에러가 없을 때만)
+        else if (newData.isDepartmentHead && value && isBeforeToday(value)) {
           setErrors((prevErrors) => ({
             ...prevErrors,
             leaveDate: '퇴사일을 오늘 이전 날짜로 지정한 경우, 부서장으로 선택할 수 없습니다.',
@@ -525,8 +533,39 @@ export function AddEmployee(): JSX.Element {
     const value = formData[field];
     if (!value) return;
 
+    // 1. 날짜 형식 검증
     if (!isValidDate(value)) {
       setErrors((prev) => ({ ...prev, [field]: '유효하지 않은 날짜입니다.' }));
+      return;
+    }
+
+    // 2. 퇴사일인 경우 입사일과 비교 검증 (우선순위 1)
+    if (field === 'leaveDate' && formData.joinDate) {
+      if (value < formData.joinDate) {
+        setErrors((prev) => ({ ...prev, leaveDate: '퇴사일은 입사일 이후 날짜만 입력할 수 있습니다.' }));
+        return;
+      }
+
+      // 3. 입사일 관계 에러가 없을 때만 부서장과의 관계 검증 (우선순위 2)
+      if (formData.isDepartmentHead && isBeforeToday(value)) {
+        setErrors((prev) => ({ ...prev, leaveDate: '퇴사일을 오늘 이전 날짜로 지정한 경우, 부서장으로 선택할 수 없습니다.' }));
+        return;
+      }
+    }
+
+    // 입사일인 경우 퇴사일과 비교 검증
+    if (field === 'joinDate' && formData.leaveDate && isValidDate(formData.leaveDate)) {
+      if (formData.leaveDate < value) {
+        setErrors((prev) => ({ ...prev, joinDate: '입사일은 퇴사일 이전 날짜만 입력할 수 있습니다.' }));
+        return;
+      } else {
+        // 입사일 변경으로 입사일이 유효해진 경우 에러 제거
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors.joinDate;
+          return newErrors;
+        });
+      }
     }
   };
 
@@ -682,7 +721,7 @@ export function AddEmployee(): JSX.Element {
         accountNumber: formData.accountNumber || null,
       };
 
-      await employeeService.create(dto);
+      const newEmployee = await employeeService.create(dto);
 
       setIsModified(false);
 
@@ -690,8 +729,8 @@ export function AddEmployee(): JSX.Element {
         title: '직원 추가를 완료했습니다.',
       });
 
-      // 직원관리 목록으로 이동
-      window.history.pushState({}, '', '/hr/employee');
+      // 직원 상세 화면으로 이동
+      window.history.pushState({}, '', `/hr/employee/${newEmployee.id}`);
       window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (error) {
       if (error instanceof Error) {
