@@ -1,6 +1,8 @@
-# shadcn/ui Skill
-
-## Description
+---
+name: shadcn
+description: shadcn/ui 컴포넌트 설치 및 관리를 수행합니다.
+user-invocable: true
+---
 shadcn/ui 컴포넌트 설치 및 관리를 위한 스킬입니다.
 
 ## Usage

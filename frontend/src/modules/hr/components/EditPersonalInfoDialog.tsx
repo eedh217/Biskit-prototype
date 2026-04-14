@@ -236,8 +236,8 @@ export function EditPersonalInfoDialog({
     }
   };
 
-  const handleAddressComplete = (zipCode: string, address: string): void => {
-    setFormData((prev) => ({ ...prev, zipCode, address }));
+  const handleAddressComplete = (data: { zonecode: string; address: string }): void => {
+    setFormData((prev) => ({ ...prev, zipCode: data.zonecode, address: data.address }));
     setIsModified(true);
     setTimeout(() => {
       detailAddressRef.current?.focus();

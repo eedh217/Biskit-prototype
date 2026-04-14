@@ -1,5 +1,8 @@
-# shadcn/ui 100% 사용 검증 가이드
-
+---
+name: shadcn-verification
+description: shadcn/ui 100% 사용 여부를 검증합니다.
+user-invocable: true
+---
 ## 목적
 
 이 프로젝트는 **shadcn/ui를 100% 활용**해야 합니다.

@@ -1,6 +1,8 @@
-# Development Workflow Skill
-
-## Description
+---
+name: workflow
+description: 개발 워크플로우 및 코딩 가이드를 제공합니다.
+user-invocable: true
+---
 개발 워크플로우 및 코딩 가이드입니다.
 
 ## 새 기능 개발 워크플로우

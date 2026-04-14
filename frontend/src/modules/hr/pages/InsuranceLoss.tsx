@@ -205,7 +205,7 @@ export function InsuranceLoss(): JSX.Element {
       updated[index] = {
         ...updated[index],
         [field]: value,
-      };
+      } as EmployeeLossInfo;
       return updated;
     });
   };
@@ -281,7 +281,7 @@ export function InsuranceLoss(): JSX.Element {
         residentNumber: employee.residentRegistrationNumber || employee.foreignerRegistrationNumber || '',
         phoneNumber: employee.phone || '',
         lossDate: calculateLossDate(),
-      };
+      } as EmployeeLossInfo;
       return updated;
     });
   };
@@ -311,25 +311,6 @@ export function InsuranceLoss(): JSX.Element {
     setSelectedEmployeeIds(newSelected);
   };
 
-  // 전체 선택
-  const handleSelectAll = (checked: boolean): void => {
-    if (checked) {
-      setSelectedEmployeeIds(new Set(employees.map((_, index) => String(index))));
-    } else {
-      setSelectedEmployeeIds(new Set());
-    }
-  };
-
-  // 개별 선택
-  const handleSelectEmployee = (index: number, checked: boolean): void => {
-    const newSelected = new Set(selectedEmployeeIds);
-    if (checked) {
-      newSelected.add(String(index));
-    } else {
-      newSelected.delete(String(index));
-    }
-    setSelectedEmployeeIds(newSelected);
-  };
 
   // 임시 저장
   const handleTempSave = (): void => {
@@ -428,7 +409,7 @@ export function InsuranceLoss(): JSX.Element {
     }
     // 도 지역인 경우 시까지 표시
     const match = fullAddress.match(/(.*?시)/);
-    return match ? match[0] : fullAddress.split(' ')[0];
+    return match ? match[0] : (fullAddress.split(' ')[0] ?? '');
   };
 
   // 필수값 검증
@@ -1483,7 +1464,7 @@ export function InsuranceLoss(): JSX.Element {
                       pageNumbers.push(totalPages);
                     }
 
-                    return pageNumbers.map((page, index) => {
+                    return pageNumbers.map((page) => {
                       if (typeof page === 'string') {
                         // ... 표시
                         return (

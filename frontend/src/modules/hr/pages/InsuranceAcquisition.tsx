@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Info, Search, Trash2, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { PageHeader } from '@/shared/components/common/PageHeader';
@@ -7,7 +7,6 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Checkbox } from '@/shared/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -18,8 +17,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
@@ -218,7 +215,7 @@ export function InsuranceAcquisition(): JSX.Element {
   ): void => {
     setEmployees((prev) => {
       const updated = [...prev];
-      const employee = { ...updated[index], [field]: value };
+      const employee = { ...updated[index], [field]: value } as EmployeeInsuranceInfo;
 
       // 보험 체크 해제 시 관련 데이터 초기화
       if (field === 'applyPension' && value === false) {
@@ -400,7 +397,7 @@ export function InsuranceAcquisition(): JSX.Element {
         nationalityType: employee.nationalityType, // 내외국인 구분 추가
         monthlySalary: calculateMonthlySalary(),
         acquisitionDate: formatJoinDate(employee.joinDate),
-      };
+      } as EmployeeInsuranceInfo;
       return updated;
     });
   };
@@ -430,25 +427,6 @@ export function InsuranceAcquisition(): JSX.Element {
     setSelectedEmployeeIds(newSelected);
   };
 
-  // 전체 선택
-  const handleSelectAll = (checked: boolean): void => {
-    if (checked) {
-      setSelectedEmployeeIds(new Set(employees.map((_, index) => String(index))));
-    } else {
-      setSelectedEmployeeIds(new Set());
-    }
-  };
-
-  // 개별 선택
-  const handleSelectEmployee = (index: number, checked: boolean): void => {
-    const newSelected = new Set(selectedEmployeeIds);
-    if (checked) {
-      newSelected.add(String(index));
-    } else {
-      newSelected.delete(String(index));
-    }
-    setSelectedEmployeeIds(newSelected);
-  };
 
   // 피부양자 신청 토글
   const handleToggleApplyForDependent = (index: number, checked: boolean): void => {
@@ -491,7 +469,7 @@ export function InsuranceAcquisition(): JSX.Element {
       nationality: '',
       residenceStatus: '',
       residencePeriod: '',
-    };
+    } as Dependent;
 
     const updatedDependents = [...(employee.dependents || []), newDependent];
     handleEmployeeChange(employeeIndex, 'dependents', updatedDependents);
@@ -511,7 +489,7 @@ export function InsuranceAcquisition(): JSX.Element {
     updatedDependents[dependentIndex] = {
       ...updatedDependents[dependentIndex],
       [field]: value,
-    };
+    } as Dependent;
     handleEmployeeChange(employeeIndex, 'dependents', updatedDependents);
   };
 
@@ -555,11 +533,11 @@ export function InsuranceAcquisition(): JSX.Element {
 
     // 현재 작성 중인 데이터가 있는지 확인
     const hasCurrentData =
-      workplace.businessNumber ||
+      workplace.managementNumber ||
       workplace.name ||
       workplace.postalCode ||
       workplace.address ||
-      workplace.detailAddress ||
+      workplace.addressDetail ||
       employees.some(
         (emp) =>
           emp.name ||
@@ -608,7 +586,7 @@ export function InsuranceAcquisition(): JSX.Element {
     }
     // 도 지역인 경우 시까지 표시
     const match = fullAddress.match(/(.*?시)/);
-    return match ? match[0] : fullAddress.split(' ')[0];
+    return match ? match[0] : (fullAddress.split(' ')[0] ?? '');
   };
 
   // 필수값 검증
@@ -1877,7 +1855,7 @@ export function InsuranceAcquisition(): JSX.Element {
                           </TableCell>
                           <TableCell>{history.workplace.name}</TableCell>
                           <TableCell className="truncate">
-                            {history.employees.length}명({history.employees.map((emp) => emp.name).join(', ')})
+                            {history.employees.length}명({history.employees.map((emp: EmployeeInsuranceInfo) => emp.name).join(', ')})
                           </TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline">
@@ -1938,7 +1916,7 @@ export function InsuranceAcquisition(): JSX.Element {
                       pageNumbers.push(totalPages);
                     }
 
-                    return pageNumbers.map((page, index) => {
+                    return pageNumbers.map((page) => {
                       if (typeof page === 'string') {
                         // ... 표시
                         return (
@@ -1975,6 +1953,7 @@ export function InsuranceAcquisition(): JSX.Element {
         </DialogContent>
       </Dialog>
 
+      {/* 주소 검색 다이얼로그 */}
       {/* 주소 검색 다이얼로그 */}
       <AddressSearchDialog
         open={addressDialogOpen}

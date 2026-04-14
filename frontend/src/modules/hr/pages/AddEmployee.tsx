@@ -362,8 +362,8 @@ export function AddEmployee(): JSX.Element {
     }, 0);
   };
 
-  const handleAddressComplete = (zipCode: string, address: string): void => {
-    setFormData((prev) => ({ ...prev, zipCode, address }));
+  const handleAddressComplete = (data: { zonecode: string; address: string }): void => {
+    setFormData((prev) => ({ ...prev, zipCode: data.zonecode, address: data.address }));
     setIsModified(true);
     // 상세주소로 포커스 이동
     setTimeout(() => {

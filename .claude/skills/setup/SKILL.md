@@ -1,6 +1,8 @@
-# Project Setup Skill
-
-## Description
+---
+name: setup
+description: Biskit HR System 프로젝트 초기 설정을 수행합니다.
+user-invocable: true
+---
 Biskit HR System 프로젝트 초기 설정을 위한 스킬입니다.
 
 ## 프로젝트 초기 설정 순서

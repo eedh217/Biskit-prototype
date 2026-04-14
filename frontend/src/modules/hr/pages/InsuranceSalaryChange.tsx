@@ -10,9 +10,9 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/shared/components/ui/dialog';
 import {
   Table,
@@ -40,8 +40,6 @@ import type { Employee } from '../types/employee';
 const SALARY_CHANGE_TEMP_STORAGE_KEY = 'biskit_insurance_salary_change_temp';
 
 export function InsuranceSalaryChange(): JSX.Element {
-  const [isComposing, setIsComposing] = useState(false);
-
   // 사업장 정보
   const [workplace, setWorkplace] = useState<WorkplaceInfo>({
     managementNumber: '',
@@ -87,9 +85,9 @@ export function InsuranceSalaryChange(): JSX.Element {
     const tempDataStr = localStorage.getItem(SALARY_CHANGE_TEMP_STORAGE_KEY);
     if (tempDataStr) {
       try {
-        const tempData: InsuranceSalaryChangeForm = JSON.parse(tempDataStr);
+        const tempData: InsuranceSalaryChangeForm & { savedAt?: string } = JSON.parse(tempDataStr);
         setHasTempData(true);
-        setTempSavedAt(tempData.savedAt || '');
+        setTempSavedAt(tempData.savedAt ?? '');
       } catch {
         // 무시
       }
@@ -132,7 +130,7 @@ export function InsuranceSalaryChange(): JSX.Element {
       applyHealthInsurance: true,
       applyEmploymentInsurance: true,
       applyWorkersCompensation: true,
-      pensionCurrentIncome: employee.salary || 0,
+      pensionCurrentIncome: employee.salaryAmount || 0,
       pensionChangedIncome: 0,
       pensionWorkerConsent: false,
       healthChangedSalary: 0,
@@ -145,6 +143,9 @@ export function InsuranceSalaryChange(): JSX.Element {
     };
 
     setEmployees((prev) => [...prev, newEmployee]);
+    toast({
+      title: `${employee.name}님이 추가되었습니다.`,
+    });
   };
 
   // 직원 정보 변경
@@ -158,7 +159,7 @@ export function InsuranceSalaryChange(): JSX.Element {
       updated[index] = {
         ...updated[index],
         [field]: value,
-      };
+      } as EmployeeSalaryChangeInfo;
       return updated;
     });
   };
@@ -179,38 +180,20 @@ export function InsuranceSalaryChange(): JSX.Element {
     setSelectedEmployeeIds(new Set());
   };
 
-  // 전체 선택
-  const handleSelectAll = (checked: boolean): void => {
-    if (checked) {
-      setSelectedEmployeeIds(new Set(employees.map((_, index) => String(index))));
-    } else {
-      setSelectedEmployeeIds(new Set());
-    }
-  };
-
-  // 개별 선택
-  const handleSelectEmployee = (index: number, checked: boolean): void => {
-    const newSelected = new Set(selectedEmployeeIds);
-    if (checked) {
-      newSelected.add(String(index));
-    } else {
-      newSelected.delete(String(index));
-    }
-    setSelectedEmployeeIds(newSelected);
-  };
 
   // 임시 저장
   const handleTempSave = (): void => {
-    const formData: InsuranceSalaryChangeForm = {
+    const now = new Date().toISOString();
+    const formData: InsuranceSalaryChangeForm & { savedAt: string } = {
       workplace,
       employees,
       reportDate,
-      savedAt: new Date().toISOString(),
+      savedAt: now,
     };
 
     localStorage.setItem(SALARY_CHANGE_TEMP_STORAGE_KEY, JSON.stringify(formData));
     setHasTempData(true);
-    setTempSavedAt(formData.savedAt);
+    setTempSavedAt(now);
 
     toast({
       title: '임시 저장되었습니다.',
@@ -328,8 +311,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                 id="managementNumber"
                 value={workplace.managementNumber}
                 onChange={(e) => handleWorkplaceChange('managementNumber', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
                 placeholder="예: 1234567890"
               />
             </div>
@@ -339,8 +320,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                 id="workplaceName"
                 value={workplace.name}
                 onChange={(e) => handleWorkplaceChange('name', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
               />
             </div>
             <div className="space-y-2">
@@ -349,8 +328,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                 id="unitName"
                 value={workplace.unitName}
                 onChange={(e) => handleWorkplaceChange('unitName', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
               />
             </div>
           </div>
@@ -362,8 +339,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                 id="branchName"
                 value={workplace.branchName}
                 onChange={(e) => handleWorkplaceChange('branchName', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
               />
             </div>
             <div className="space-y-2">
@@ -391,8 +366,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                 id="address"
                 value={workplace.address}
                 onChange={(e) => handleWorkplaceChange('address', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
               />
             </div>
             <div className="space-y-2">
@@ -401,8 +374,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                 id="addressDetail"
                 value={workplace.addressDetail}
                 onChange={(e) => handleWorkplaceChange('addressDetail', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
               />
             </div>
           </div>
@@ -475,10 +446,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                 <Card key={index} className="border-2">
                   <CardHeader className="bg-gray-50">
                     <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={selectedEmployeeIds.has(String(index))}
-                        onChange={(e) => handleSelectEmployee(index, e.target.checked)}
-                      />
                       <div className="font-semibold">
                         {employee.name} ({employee.employeeNumber || '신규'})
                       </div>
@@ -496,8 +463,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                             onChange={(e) =>
                               handleEmployeeChange(index, 'name', e.target.value)
                             }
-                            onCompositionStart={() => setIsComposing(true)}
-                            onCompositionEnd={() => setIsComposing(false)}
                           />
                         </div>
                         <div className="space-y-2">
@@ -530,8 +495,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                             onChange={(e) =>
                               handleEmployeeChange(index, 'changeReason', e.target.value)
                             }
-                            onCompositionStart={() => setIsComposing(true)}
-                            onCompositionEnd={() => setIsComposing(false)}
                           />
                         </div>
                       </div>
@@ -690,8 +653,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                                   e.target.value
                                 )
                               }
-                              onCompositionStart={() => setIsComposing(true)}
-                              onCompositionEnd={() => setIsComposing(false)}
                             />
                           </div>
                         </div>
@@ -762,8 +723,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                                   e.target.value
                                 )
                               }
-                              onCompositionStart={() => setIsComposing(true)}
-                              onCompositionEnd={() => setIsComposing(false)}
                             />
                           </div>
                         </div>
@@ -857,8 +816,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                 <Input
                   value={historySearch}
                   onChange={(e) => setHistorySearch(e.target.value)}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
                   placeholder="사번 또는 성명"
                 />
               </div>
