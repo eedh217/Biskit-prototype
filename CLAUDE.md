@@ -1,4 +1,11 @@
-# Biskit HR System - 간이지급명세서 모듈
+# Biskit HR System - 개발 가이드
+
+> **중요**: UI/디자인 관련 규칙은 [`DESIGN.md`](./DESIGN.md) 문서를 참조하세요.
+>
+> - **DESIGN.md**: 색상, 타이포그래피, 레이아웃, 컴포넌트 스타일 등 디자인 시스템
+> - **CLAUDE.md**: 개발 규칙, 정책, 워크플로우, 코딩 컨벤션 (이 문서)
+
+---
 
 ## ⚠️ 최우선 개발 원칙 (매우 중요)
 
@@ -48,16 +55,16 @@
 
 ### 9. UI / 레이아웃 변경 금지 및 디자인 일관성 유지 (매우 중요)
 
+**모든 UI/디자인 관련 규칙은 [`DESIGN.md`](./DESIGN.md) 문서를 따릅니다.**
+
 - 요청한 기능과 직접 관련 없는 UI 변경은 절대 하지 않습니다
 - 기존 레이아웃, 간격, 크기, 정렬을 임의로 변경하지 않습니다
 - 버튼 위치, 컴포넌트 크기, 팝업 사이즈를 변경하지 않습니다
-
 - 기존에 개발된 UI 스타일과 반드시 동일한 패턴을 유지합니다
 - 새로운 디자인을 임의로 만들지 않습니다
-- 기존 컴포넌트 구조와 스타일을 그대로 따릅니다
-
 - "더 나은 UX", "디자인 개선", "정렬 수정" 등의 이유로 변경하지 않습니다
 - UI 변경이 필요하다고 판단되면 반드시 먼저 사용자에게 질문합니다
+- **디자인 시스템 상세 내용**: [`DESIGN.md`](./DESIGN.md) 참조
 
 ### 10. 변경 범위 최소화 (강제)
 
@@ -66,7 +73,8 @@
 - 불필요한 코드 이동, 정렬 변경, 스타일 변경을 금지합니다
 
 ### 개발 시작 전 체크리스트
-- [ ] Policy 문서를 확인했는가?
+- [ ] **[`DESIGN.md`](./DESIGN.md) 문서를 확인했는가?** (UI/디자인 규칙)
+- [ ] Policy 문서를 확인했는가? (`policy/` 디렉토리)
 - [ ] 요구사항이 명확한가?
 - [ ] 모호한 부분이 있는가? → 질문 필요
 - [ ] Policy 문서에 없는 기능인가? → 질문 필요
@@ -80,28 +88,38 @@
 
 ### 현재 구현된 모듈
 
-#### 1. 인사정보 모듈 (HR Module)
-- **직원 관리**: 직원 등록/수정/삭제, 상세 정보, 이력 관리
-- **부서 관리**: 트리 구조의 조직도, 부서별 직원 목록
-- **직급 관리**: 직급 코드 관리
-- **근로형태 관리**: 근로형태 코드 관리
+#### 1. 인사정보 모듈 (HR Module) - 핵심 기능 완료
+- **직원 관리**: 등록/수정/삭제/상세/검색/다중 삭제, 더미 데이터 생성
+- **부서 관리**: 트리 구조의 조직도, 드래그앤드롭, 부서별 직원 목록
+- **직급 관리**: 인라인 편집, 순서 변경 (드래그앤드롭)
+- **근로형태 관리**: 인라인 편집, 순서 변경 (드래그앤드롭)
+- **이력 관리**: 발령 이력 타임라인 (입사/퇴사/이동/승진 등)
+- **연차/휴가 관리**: 기본 구조 (4개 탭: 현황/승인/종류관리/설정) ⏳
 
-#### 2. 간이지급명세서 모듈 (Statement Module)
-- **사업소득**: 월별/합산 관리, 엑셀 업로드/다운로드
-- **기타소득**: 월별/합산 관리, 엑셀 업로드/다운로드
+#### 2. 간이지급명세서 모듈 (Statement Module) - 완료
+- **사업소득**: 월별 리스트, 전체 목록, 합산, CRUD, 간이지급명세서 생성
+- **기타소득**: 월별 리스트, 전체 목록, 합산, CRUD, 간이지급명세서 생성
+- **근로소득**: 메뉴만 준비 ⏳
 
 ## 기술 스택
 
-- React 18 + Vite
-- TypeScript (strict mode)
-- shadcn/ui (Tailwind CSS)
-- TanStack Router (라우팅)
-- TanStack Query (서버 상태)
-- Zustand (클라이언트 상태)
-- TanStack Table (데이터 테이블)
-- React Hook Form + Zod (폼 관리)
-- LocalStorage (데이터 저장소)
-- UUID (고유 ID 생성)
+### 실제 사용 중
+- **React 18** + **Vite** (빌드 도구)
+- **TypeScript** (strict mode)
+- **shadcn/ui** + **Tailwind CSS** (UI 라이브러리)
+- **TanStack Table** v8 (데이터 테이블)
+- **@dnd-kit** (드래그앤드롭)
+- **LocalStorage** (데이터 저장소)
+- **UUID** (고유 ID 생성)
+- **Lucide React** (아이콘)
+- **date-fns** (날짜 처리)
+
+### 설치되었으나 미사용
+- ~~TanStack Router~~ → 클라이언트 기반 라우팅 사용 (`window.location`, `history.pushState`)
+- ~~TanStack Query~~ → LocalStorage 서비스 직접 사용
+- ~~Zustand~~ → React Hooks로 상태 관리
+- ~~React Hook Form + Zod~~ → 수동 폼 관리
+- ~~Axios~~ → 현재 API 호출 없음 (LocalStorage만 사용)
 
 ## 코딩 규칙
 
@@ -164,28 +182,48 @@ biskit-hr-system/
     └── package.json
 ```
 
-## 메뉴 구조
+## 라우팅 및 메뉴 구조
 
-- **모듈**: 사이드바 최상단에서 선택 (인사정보, 간이지급명세서)
-- **1depth**: LNB에 표시
-  - 인사정보: 직원 관리, 부서 관리, 직급 관리, 근로형태 관리
+### 라우팅 방식
+- **클라이언트 기반 라우팅**: `window.location.pathname`과 query string 사용
+- **동적 네비게이션**: `window.history.pushState()` 및 `popstate` 이벤트
+- **TanStack Router 미사용**: App.tsx에서 직접 라우팅 처리
+
+### 메뉴 구조
+- **모듈** (Sidebar): 인사정보, 간이지급명세서
+- **1depth** (LNB):
+  - 인사정보: 직원 관리, 조직 관리, 연차/휴가, 근태관리
   - 간이지급명세서: 근로소득, 사업소득, 기타소득
-- **2depth**: LNB에 표시 (필요시)
-- **3depth**: 화면 내 탭으로 표시 (필요시)
+- **2depth** (LNB):
+  - 조직 관리: 부서 관리, 직급 관리, 근로형태 관리
+- **3depth**: 화면 내 탭으로 표시
+  - 직원 상세: 개인정보, 조직정보, 급여정보, 연차/휴가
+  - 연차/휴가 관리: 휴가현황, 휴가승인, 휴가종류관리, 설정
 
 ## 데이터 관리
 
 - **LocalStorage 기반**: 모든 데이터는 브라우저 LocalStorage에 저장
 - **Storage Keys**:
+
+  **인사정보 모듈:**
   - `biskit_employees`: 직원 데이터
   - `biskit_organizations`: 부서/조직 데이터
   - `biskit_job_levels`: 직급 마스터 데이터
   - `biskit_employment_types`: 근로형태 마스터 데이터
   - `biskit_employee_history`: 직원 이력 데이터 (발령 이력)
+  - `biskit_leave_requests`: 휴가 신청 내역
+  - `biskit_leave_balance`: 직원별 연차 잔여일
+  - `biskit_leave_history`: 휴가 사용 이력
+  - `biskit_leave_settings`: 연차 부여 설정
+  - `biskit_holidays`: 공휴일 데이터
+  - `biskit_vacation_types`: 휴가 종류 (연차, 반차, 병가 등)
+
+  **간이지급명세서 모듈:**
   - `biskit_business_income`: 사업소득 데이터
   - `biskit_other_income`: 기타소득 데이터
   - `biskit_industry_codes`: 업종코드 마스터 데이터
   - `biskit_sps_bi_creation_form`: 간이지급명세서 생성 폼 데이터 (입력값 저장)
+
 - **데이터 영속성**: 브라우저 캐시를 지우기 전까지 데이터 유지
 - **페이징/필터링/정렬**: 클라이언트 측에서 처리
 
@@ -234,71 +272,56 @@ biskit-hr-system/
 - 이력 유형: 입사, 퇴사, 부서이동, 직급변경, 급여변경 등
 - 이력 등록/수정/삭제
 
+### 연차/휴가 관리 (Leave Management) ⏳ 기본 구조
+- **휴가 현황 (LeaveDashboard)**: 부서별/직원별 연차 사용 현황
+- **휴가 승인 (LeaveApproval)**: 휴가 신청 목록 및 승인/반려
+- **휴가 종류 관리 (VacationTypeManagement)**: 연차, 반차, 병가 등 휴가 타입 관리
+- **설정 (LeaveSettings)**: 연차 자동 부여 규칙, 공휴일 관리, 시간 단위 연차 설정
+- 4개 탭 구조로 구현, 세부 기능은 진행 중
+
 ### 국가 코드 (ISO 3166-1 alpha-2)
 - 외국인 직원의 국적 관리
 - 194개 국가 코드 지원 (한글/영문 이름)
 - `shared/constants/countries.ts`에 정의
 
-## shadcn/ui 사용 (필수)
+### 은행 코드
+- 계좌 정보 입력 시 은행 선택
+- 주요 시중 은행 코드 지원
+- `shared/constants/banks.ts`에 정의
 
-### ⚠️ 중요: shadcn/ui 100% 활용 규칙
+## UI/디자인 시스템
 
-**모든 UI 컴포넌트는 반드시 shadcn/ui를 사용해야 합니다.**
+**모든 UI/디자인 관련 규칙은 [`DESIGN.md`](./DESIGN.md) 문서를 참조하세요.**
 
-#### 필수 규칙
-1. **Button, Input, Select 등 모든 기본 UI 요소는 shadcn 컴포넌트 사용**
-2. **커스텀 스타일링 금지** - shadcn 컴포넌트를 확장하거나 variant 추가만 허용
-3. **순수 HTML 태그 직접 사용 금지** - `<button>`, `<input>` 대신 shadcn 컴포넌트 사용
-4. **인라인 스타일 금지** - Tailwind className만 사용
+### 핵심 요약
 
-#### 올바른 사용 예시 ✅
-```tsx
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Card } from '@/shared/components/ui/card';
+1. **shadcn/ui 컴포넌트만 사용** - 순수 HTML 태그 금지
+2. **Tailwind CSS만 사용** - 인라인 스타일 금지
+3. **DESIGN.md의 색상/간격/타이포그래피 준수**
+4. **기존 디자인 패턴 유지** (PageHeader, DataTable 등)
 
-<Button variant="default">저장</Button>
-<Input placeholder="이름" />
-<Card>...</Card>
-```
-
-#### 잘못된 사용 예시 ❌
-```tsx
-// ❌ 순수 HTML 태그 사용
-<button className="px-4 py-2">저장</button>
-
-// ❌ 커스텀 컴포넌트 직접 구현
-function CustomButton() {
-  return <button className="...">...</button>;
-}
-
-// ❌ 인라인 스타일
-<div style={{ padding: '10px' }}>...</div>
-```
-
-#### shadcn 컴포넌트 설치
-- 컴포넌트는 `src/shared/components/ui`에 설치
-- `npx shadcn@latest add {component}` 명령어로 추가
-- 필요시 shadcn 컴포넌트 파일 직접 수정 가능
-
-#### 개발 전 체크리스트
-- [ ] 필요한 shadcn 컴포넌트가 설치되어 있는가?
-- [ ] 모든 버튼이 `<Button>` 컴포넌트를 사용하는가?
-- [ ] 모든 입력 필드가 `<Input>`, `<Select>` 등을 사용하는가?
-- [ ] 커스텀 스타일 대신 Tailwind className을 사용하는가?
-- [ ] 순수 HTML 태그를 직접 사용한 곳이 없는가?
+> 상세 내용은 [`DESIGN.md`](./DESIGN.md) 참조
 
 ## 환경 변수
 
 프로젝트는 LocalStorage 기반으로 동작하므로 별도의 환경 변수가 필요하지 않습니다.
 
+## 더미 데이터 생성
+
+직원 목록 화면(`/hr/employee`)에서 **"더미 데이터 생성"** 버튼을 통해 테스트용 데이터를 자동 생성할 수 있습니다.
+- 생성 위치: `modules/hr/services/seedEmployees.ts`
+- 20명의 샘플 직원 데이터 생성
+- 부서, 직급, 근로형태는 사전에 등록되어 있어야 함
+
 ## 개발 워크플로우
 
-1. 기능 개발 시 타입 먼저 정의 (`types/`)
-2. LocalStorage 서비스 구현 (`services/`)
-3. 커스텀 훅 작성 (`hooks/`)
-4. 컴포넌트 구현 (`components/`, `pages/`)
-5. 라우팅 연결 (`routes/`)
+1. **Policy 문서 확인** (`policy/` 디렉토리)
+2. **DESIGN.md 확인** (디자인 시스템)
+3. 기능 개발 시 타입 먼저 정의 (`types/`)
+4. LocalStorage 서비스 구현 (`services/`)
+5. 커스텀 훅 작성 (`hooks/`) - 선택사항
+6. 컴포넌트 구현 (`components/`, `pages/`)
+7. App.tsx에 라우팅 추가 (클라이언트 기반 라우팅)
 
 ## LocalStorage 서비스 패턴
 
@@ -376,44 +399,14 @@ const handleInputChange = (field: string, value: string): void => {
 **적용 대상**: 한글 입력이 가능한 모든 필드
 - 상호(법인명), 대표자 성명, 담당자 성명, 담당자 부서, 생성목적 등
 
-## Popover 사용 패턴
+## UI 컴포넌트 사용 패턴
 
-메뉴 아이템 리스트 형태의 Popover를 사용할 때:
+**상세 패턴은 [`DESIGN.md`](./DESIGN.md)의 "Design Patterns" 섹션 참조**
 
-```typescript
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/shared/components/ui/popover';
-
-<Popover open={showPopover} onOpenChange={setShowPopover}>
-  <PopoverTrigger asChild>
-    <Button>액션 버튼</Button>
-  </PopoverTrigger>
-  <PopoverContent className="w-64" align="end">
-    <div className="space-y-2">
-      <button
-        onClick={handleOption1}
-        className="w-full text-left p-3 rounded-md hover:bg-gray-100 transition-colors"
-      >
-        <div className="text-sm font-medium">옵션 1</div>
-      </button>
-      <button
-        onClick={handleOption2}
-        className="w-full text-left p-3 rounded-md hover:bg-gray-100 transition-colors"
-      >
-        <div className="text-sm font-medium">옵션 2</div>
-      </button>
-    </div>
-  </PopoverContent>
-</Popover>
-```
-
-**스타일링 원칙**:
-- 텍스트 크기: text-sm (14px)
-- Popover 너비: w-64 (256px) ~ w-80 (320px)
-- 정렬: align="end" (우측 정렬)
+- PageHeader: depth가 있는 화면
+- DataTable: 리스트 화면
+- Dialog: 모달
+- Popover: 팝오버
 
 ## 커밋 컨벤션
 

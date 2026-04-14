@@ -6,40 +6,56 @@
 
 ### 현재 구현된 모듈
 
-- ✅ **인사정보 모듈** (완료)
-  - 직원 관리 (등록/수정/삭제/상세)
-  - 부서 관리 (조직도 트리)
-  - 직급 관리
-  - 근로형태 관리
-  - 이력 관리 (발령 이력)
+- ✅ **인사정보 모듈** (핵심 기능 완료)
+  - 직원 관리 (등록/수정/삭제/상세/검색/다중 삭제)
+  - 부서 관리 (조직도 트리, 드래그앤드롭)
+  - 직급 관리 (인라인 편집, 순서 변경)
+  - 근로형태 관리 (인라인 편집, 순서 변경)
+  - 이력 관리 (발령 이력 타임라인)
+  - 연차/휴가 관리 (기본 구조 구현, 4개 탭)
 
-- ✅ **사업소득 모듈** (완료)
-  - 월별 사업소득 관리
-  - 사업소득 합산 화면
-  - 엑셀 업로드/다운로드
-  - 추가/수정/삭제 기능
+- ✅ **간이지급명세서 - 사업소득** (완료)
+  - 월별 사업소득 관리 (검색, CRUD, 다중 삭제)
+  - 전체 사업소득 목록 (지급 기준)
+  - 사업소득 합산 화면 (연도별 타일)
+  - 간이지급명세서 생성 (PDF 다운로드)
+  - 엑셀 업로드/다운로드 (UI 준비)
 
-- ✅ **기타소득 모듈** (완료)
-  - 월별 기타소득 관리
-  - 기타소득 합산 화면
-  - 엑셀 업로드/다운로드
-  - 추가/수정/삭제 기능
+- ✅ **간이지급명세서 - 기타소득** (완료)
+  - 월별 기타소득 관리 (검색, CRUD, 다중 삭제)
+  - 전체 기타소득 목록 (지급 기준)
+  - 기타소득 합산 화면 (연도별 타일)
+  - 간이지급명세서 생성 (PDF 다운로드)
+  - 엑셀 업로드/다운로드 (UI 준비)
 
 ### 향후 추가 예정 모듈
 
-- ⏳ 근로소득 모듈
-- ⏳ 급여정보 모듈
+- ⏳ **근로소득** (메뉴만 준비)
+- ⏳ **근태관리** (메뉴만 준비)
+- ⏳ **연차/휴가 관리** (탭 구조 완료, 세부 기능 진행 중)
+- ⏳ **급여정보 모듈** (미구현)
 
 ## 🛠 기술 스택
 
-- React 18 + Vite
-- TypeScript (Strict Mode)
-- Shadcn/ui (Tailwind CSS)
-- TanStack Query (서버 상태)
-- Zustand (클라이언트 상태)
-- React Hook Form + Zod
-- LocalStorage (데이터 저장소)
-- UUID (고유 ID 생성)
+### 핵심 기술
+- **React 18** + **Vite** (빌드 도구)
+- **TypeScript** (Strict Mode)
+- **Shadcn/ui** + **Tailwind CSS** (UI 라이브러리)
+- **LocalStorage** (데이터 저장소)
+- **UUID** (고유 ID 생성)
+
+### 주요 라이브러리
+- **TanStack Table** v8 (데이터 테이블)
+- **@dnd-kit** (드래그앤드롭)
+- **Lucide React** (아이콘)
+- **date-fns** (날짜 처리)
+- **Axios** (설치됨, 현재 미사용)
+
+### 설치되었으나 미사용
+- ~~TanStack Router~~ (클라이언트 기반 라우팅 사용)
+- ~~TanStack Query~~ (LocalStorage 서비스 직접 사용)
+- ~~Zustand~~ (React Hooks로 상태 관리)
+- ~~React Hook Form + Zod~~ (수동 폼 관리)
 
 ## 🚀 빠른 시작
 
@@ -64,14 +80,42 @@ npm run dev
 ### 3. 접속
 
 - **애플리케이션**: http://localhost:5173
+- **기본 화면**: 사업소득 월별 리스트
 
-### 4. 데이터 저장
+### 4. 더미 데이터 생성
+
+직원 목록 화면(`/hr/employee`)에서 **"더미 데이터 생성"** 버튼을 클릭하면 테스트용 직원 데이터를 자동 생성할 수 있습니다.
+
+### 5. 데이터 저장
 
 - 모든 데이터는 **브라우저 LocalStorage**에 저장됩니다
 - 브라우저 캐시를 지우기 전까지 데이터가 유지됩니다
 - 중요한 데이터는 정기적으로 백업하시기 바랍니다
 
 ## 📚 주요 기능
+
+## 📍 라우팅 구조
+
+```
+/                                                  → 사업소득 월별 리스트 (기본)
+/statement/earned-income                           → 준비중 (근로소득)
+/statement/business-income                         → 사업소득 월별 리스트
+/statement/business-income/monthly?year=YYYY&month=MM → 특정 월 사업소득
+/statement/business-income/all                     → 전체 사업소득 (지급 기준)
+/statement/other-income                            → 기타소득 월별 리스트
+/statement/other-income/monthly?year=YYYY&month=MM → 특정 월 기타소득
+/statement/other-income/all                        → 전체 기타소득 (지급 기준)
+/hr/employee                                       → 직원 목록
+/hr/employee/add                                   → 직원 등록
+/hr/employee/:id                                   → 직원 상세
+/hr/organization/department                        → 부서 관리
+/hr/organization/position                          → 직급 관리
+/hr/organization/employment-type                   → 근로형태 관리
+/hr/leave                                          → 연차/휴가 관리
+/hr/attendance                                     → 준비중 (근태관리)
+```
+
+---
 
 ## 인사정보 모듈 (HR Module)
 
@@ -142,6 +186,13 @@ npm run dev
 - 이력 유형: 입사, 퇴사, 부서이동, 직급변경, 급여변경 등
 - 이력 등록/수정/삭제
 
+### 연차/휴가 관리 (HRIS_LEAVE_01~04) ⏳ 기본 구조
+
+- **휴가 현황**: 부서별/직원별 연차 사용 현황
+- **휴가 승인**: 휴가 신청 목록 및 승인/반려
+- **휴가 종류 관리**: 연차, 반차, 병가 등 휴가 타입 관리
+- **설정**: 연차 자동 부여 규칙, 공휴일 관리 등
+
 ---
 
 ## 간이지급명세서 모듈 (Statement Module)
@@ -209,11 +260,20 @@ npm run dev
 
 ### LocalStorage Keys
 
+**인사정보 모듈:**
 - `biskit_employees`: 직원 데이터
 - `biskit_organizations`: 부서/조직 데이터
 - `biskit_job_levels`: 직급 마스터 데이터
 - `biskit_employment_types`: 근로형태 마스터 데이터
 - `biskit_employee_history`: 직원 이력 데이터 (발령 이력)
+- `biskit_leave_requests`: 휴가 신청 내역
+- `biskit_leave_balance`: 직원별 연차 잔여일
+- `biskit_leave_history`: 휴가 사용 이력
+- `biskit_leave_settings`: 연차 부여 설정
+- `biskit_holidays`: 공휴일 데이터
+- `biskit_vacation_types`: 휴가 종류 (연차, 반차, 병가 등)
+
+**간이지급명세서 모듈:**
 - `biskit_business_income`: 사업소득 데이터
 - `biskit_other_income`: 기타소득 데이터
 - `biskit_industry_codes`: 업종코드 마스터 데이터
@@ -330,8 +390,9 @@ biskit-hr-system/
 
 ## 📖 상세 문서
 
+- **[프로젝트 개발 가이드 (CLAUDE.md)](./CLAUDE.md)** - 개발 규칙, 정책, 워크플로우
+- **[디자인 시스템 (DESIGN.md)](./DESIGN.md)** - 색상, 타이포그래피, 레이아웃, 컴포넌트 스타일
 - [프론트엔드 README](./frontend/README.md)
-- [프로젝트 컨텍스트 (CLAUDE.md)](./CLAUDE.md)
 
 ## ⚠️ 주의사항
 

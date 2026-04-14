@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { LNB } from './LNB';
 
@@ -96,15 +96,37 @@ const HR_MENU_ITEMS: MenuItem[] = [
     children: [],
   },
   {
-    id: 'attendance',
-    label: '근태관리',
-    path: '/hr/attendance',
-    children: [],
+    id: 'insurance',
+    label: '4대보험 관리',
+    path: '/hr/insurance',
+    children: [
+      {
+        id: 'insurance-acquisition',
+        label: '자격 취득신고',
+        path: '/hr/insurance/acquisition',
+      },
+      {
+        id: 'insurance-loss',
+        label: '자격 상실신고',
+        path: '/hr/insurance/loss',
+      },
+      {
+        id: 'insurance-salary-change',
+        label: '보수월액 변경',
+        path: '/hr/insurance/salary-change',
+      },
+      {
+        id: 'insurance-dependent',
+        label: '피부양자 관리',
+        path: '/hr/insurance/dependent',
+      },
+    ],
   },
 ];
 
 export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProps): JSX.Element {
   const [selectedModule, setSelectedModule] = useState<string>('statement');
+  const mainRef = useRef<HTMLDivElement>(null);
 
   // currentPath를 기반으로 모듈 자동 선택
   useEffect(() => {
@@ -114,6 +136,13 @@ export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProp
       setSelectedModule('hr');
     } else if (pathname.startsWith('/statement') || pathname === '/') {
       setSelectedModule('statement');
+    }
+  }, [currentPath]);
+
+  // 페이지 전환 시 스크롤을 맨 위로 이동
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
     }
   }, [currentPath]);
 
@@ -152,7 +181,7 @@ export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProp
       )}
 
       {/* 메인 콘텐츠 영역 */}
-      <main className="flex-1 overflow-auto bg-white">
+      <main ref={mainRef} className="flex-1 overflow-auto bg-white">
         <div className="mx-auto max-w-[1500px] px-6 py-6">
           {children}
         </div>

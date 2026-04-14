@@ -206,6 +206,7 @@ export const COUNTRIES: Country[] = [
   { code: 'PH', nameKo: '필리핀', nameEn: 'Philippines' },
   { code: 'HU', nameKo: '헝가리', nameEn: 'Hungary' },
   { code: 'HK', nameKo: '홍콩', nameEn: 'Hong Kong' },
+  { code: 'KR', nameKo: '한국', nameEn: 'South Korea' },
 ];
 
 /**

@@ -26,5 +26,8 @@
   "search.exclude": {
     "**/node_modules": true,
     "**/dist": true
+  },
+  "workbench.editorAssociations": {
+    "*.md": "vscode.markdown.preview.editor"
   }
 }
