@@ -803,6 +803,90 @@ export interface InsuranceSalaryChangeForm {
   savedAt?: string; // 저장 시각
 }
 
+// ==================== 피부양자 관리 관련 타입 및 상수 ====================
+
+/**
+ * 피부양자 취득(상실) 부호
+ */
+export const DEPENDENT_ACQUISITION_LOSS_CODES = [
+  // 취득 부호
+  { value: '03', label: '03 - (취득사유) 출생', type: 'acquisition' },
+  { value: '04-취득', label: '04 - (취득사유) 외국국적을 상실하고 취득자로서 재외', type: 'acquisition' },
+  { value: '05', label: '05 - (취득사유) 직장가입자 변경', type: 'acquisition' },
+  { value: '06', label: '06 - (취득사유) 피부양자 상실', type: 'acquisition' },
+  { value: '07', label: '07 - (취득사유) 직장가입자에서 변경', type: 'acquisition' },
+  // 상실 부호
+  { value: '02', label: '02 - (상실사유) 사망', type: 'loss' },
+  { value: '04-상실', label: '04 - (상실사유) 외국국적을 상실하고자를 취득', type: 'loss' },
+  { value: '10', label: '10 - (상실사유) 유공자를 긴급보장 배제신청', type: 'loss' },
+  { value: '14', label: '14 - (상실사유) 지주불동등', type: 'loss' },
+  { value: '17', label: '17 - (상실사유) 국적 상실', type: 'loss' },
+  { value: '18', label: '18 - (상실사유) 의국민(지역국민)으로서 출국', type: 'loss' },
+  { value: '19', label: '19 - (상실사유) 이민출국', type: 'loss' },
+  { value: '21', label: '21 - (상실사유) 행방불명', type: 'loss' },
+  { value: '13', label: '13 - (상실사유) 기타', type: 'loss' },
+] as const;
+
+/**
+ * 피부양자 관리용 확장 정보
+ */
+export interface DependentWithManagementInfo extends Dependent {
+  acquisitionOrLossType?: 'acquisition' | 'loss'; // 구분 (취득/상실)
+  acquisitionOrLossDate?: string; // 취득(상실)일자 (YYYY-MM-DD)
+  acquisitionOrLossCode?: string; // 취득(상실)부호
+}
+
+/**
+ * 직원별 피부양자 관리 정보
+ */
+export interface EmployeeDependentManagement {
+  // 직원 기본 정보
+  employeeId?: string; // 직원 ID (기존 직원 선택 시)
+  employeeNumber?: string; // 사번
+  name: string; // 성명
+  residentNumber: string; // 주민등록번호/외국인등록번호
+  phoneNumber?: string; // 전화번호(휴대전화)
+
+  // 피부양자 목록
+  dependents: DependentWithManagementInfo[];
+}
+
+/**
+ * 피부양자 관리 신고서 전체 데이터
+ */
+export interface DependentManagementForm {
+  // 사업장 정보
+  workplace: {
+    managementNumber: string; // 사업장관리번호
+    name: string; // 명칭
+    phoneNumber: string; // 전화번호
+  };
+
+  // 직원별 피부양자 관리
+  employees: EmployeeDependentManagement[];
+
+  // 신고 정보
+  reportDate: string; // 보고 연월일 (YYYY-MM-DD)
+
+  // 임시 저장 메타데이터
+  savedAt?: string; // 저장 시각
+}
+
+/**
+ * 피부양자 관리 신고내역
+ */
+export interface DependentManagementHistory {
+  id: string; // 고유 ID
+  reportDate: string; // 신고일자 (YYYY-MM-DD)
+  workplace: {
+    managementNumber: string;
+    name: string;
+    phoneNumber: string;
+  };
+  employees: EmployeeDependentManagement[];
+  createdAt: string; // 생성 시각 (ISO 8601)
+}
+
 // ==================== 신고/신청 내역 관련 타입 ====================
 
 /**

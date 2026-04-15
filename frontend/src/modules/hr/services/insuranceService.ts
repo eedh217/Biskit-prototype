@@ -4,9 +4,11 @@ import {
   InsuranceAcquisitionHistory,
   InsuranceLossHistory,
   InsuranceSalaryChangeHistory,
+  DependentManagementHistory,
   EmployeeInsuranceInfo,
   EmployeeLossInfo,
   EmployeeSalaryChangeInfo,
+  EmployeeDependentManagement,
 } from '../types/insurance';
 
 const WORKPLACE_STORAGE_KEY = 'biskit_insurance_workplace_info';
@@ -16,12 +18,17 @@ const TEMP_FORM_STORAGE_KEY = 'biskit_insurance_acquisition_temp';
 const ACQUISITION_HISTORY_KEY = 'biskit_insurance_acquisition_history';
 const LOSS_HISTORY_KEY = 'biskit_insurance_loss_history';
 const SALARY_CHANGE_HISTORY_KEY = 'biskit_insurance_salary_change_history';
+const DEPENDENT_MANAGEMENT_HISTORY_KEY = 'biskit_dependent_management_history';
 
 /**
- * 사업장 정보 저장
+ * 사업장 정보 저장 (기존 정보와 merge)
+ * - 기존에 저장된 정보가 있으면 새로운 정보로 덮어쓰기 (병합)
+ * - 입력하지 않은 필드는 기존 값 유지
  */
-export function saveWorkplaceInfo(info: WorkplaceInfo): void {
-  localStorage.setItem(WORKPLACE_STORAGE_KEY, JSON.stringify(info));
+export function saveWorkplaceInfo(info: Partial<WorkplaceInfo>): void {
+  const existing = loadWorkplaceInfo();
+  const merged = { ...(existing || {}), ...info };
+  localStorage.setItem(WORKPLACE_STORAGE_KEY, JSON.stringify(merged));
 }
 
 /**
@@ -241,6 +248,71 @@ export function getSalaryChangeHistories(
 
   try {
     let histories: InsuranceSalaryChangeHistory[] = JSON.parse(stored);
+
+    if (startDate || endDate) {
+      histories = histories.filter((h) => {
+        if (startDate && h.reportDate < startDate) return false;
+        if (endDate && h.reportDate > endDate) return false;
+        return true;
+      });
+    }
+
+    if (search && search.trim()) {
+      const searchTerm = search.trim().toLowerCase();
+      histories = histories.filter((h) =>
+        h.employees.some(
+          (emp) =>
+            emp.name.toLowerCase().includes(searchTerm) ||
+            (emp.employeeNumber && emp.employeeNumber.toLowerCase().includes(searchTerm))
+        )
+      );
+    }
+
+    return histories;
+  } catch {
+    return [];
+  }
+}
+
+// ==================== 피부양자 관리 신고내역 관리 ====================
+
+/**
+ * 피부양자 관리 신고내역 저장
+ */
+export function saveDependentManagementHistory(
+  reportDate: string,
+  workplace: { managementNumber: string; name: string; phoneNumber: string },
+  employees: EmployeeDependentManagement[]
+): DependentManagementHistory {
+  const history: DependentManagementHistory = {
+    id: crypto.randomUUID(),
+    reportDate,
+    workplace,
+    employees,
+    createdAt: new Date().toISOString(),
+  };
+
+  const stored = localStorage.getItem(DEPENDENT_MANAGEMENT_HISTORY_KEY);
+  const histories: DependentManagementHistory[] = stored ? JSON.parse(stored) : [];
+  histories.unshift(history);
+  localStorage.setItem(DEPENDENT_MANAGEMENT_HISTORY_KEY, JSON.stringify(histories));
+
+  return history;
+}
+
+/**
+ * 피부양자 관리 신고내역 조회
+ */
+export function getDependentManagementHistories(
+  startDate?: string,
+  endDate?: string,
+  search?: string
+): DependentManagementHistory[] {
+  const stored = localStorage.getItem(DEPENDENT_MANAGEMENT_HISTORY_KEY);
+  if (!stored) return [];
+
+  try {
+    let histories: DependentManagementHistory[] = JSON.parse(stored);
 
     if (startDate || endDate) {
       histories = histories.filter((h) => {

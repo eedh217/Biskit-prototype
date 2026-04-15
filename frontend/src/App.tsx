@@ -14,6 +14,7 @@ import { LeaveManagement } from './modules/hr/pages/LeaveManagement';
 import { InsuranceAcquisition } from './modules/hr/pages/InsuranceAcquisition';
 import { InsuranceLoss } from './modules/hr/pages/InsuranceLoss';
 import { InsuranceSalaryChange } from './modules/hr/pages/InsuranceSalaryChange';
+import { DependentManagement } from './modules/hr/pages/DependentManagement';
 import { Toaster } from './shared/components/ui/toaster';
 
 export function App(): JSX.Element {
@@ -136,12 +137,7 @@ export function App(): JSX.Element {
 
     // 인사 - 4대보험 관리 - 피부양자 관리
     if (pathname === '/hr/insurance/dependent') {
-      return (
-        <div className="p-8">
-          <h1 className="text-2xl font-bold text-slate-800">피부양자 관리</h1>
-          <p className="text-slate-600 mt-2">준비 중입니다.</p>
-        </div>
-      );
+      return <DependentManagement key={currentPath} />;
     }
 
     // 인사 - 근태관리

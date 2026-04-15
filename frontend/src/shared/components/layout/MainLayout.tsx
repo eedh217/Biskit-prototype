@@ -111,14 +111,14 @@ const HR_MENU_ITEMS: MenuItem[] = [
         path: '/hr/insurance/loss',
       },
       {
-        id: 'insurance-salary-change',
-        label: '보수월액 변경',
-        path: '/hr/insurance/salary-change',
-      },
-      {
         id: 'insurance-dependent',
         label: '피부양자 관리',
         path: '/hr/insurance/dependent',
+      },
+      {
+        id: 'insurance-salary-change',
+        label: '보수월액 변경',
+        path: '/hr/insurance/salary-change',
       },
     ],
   },

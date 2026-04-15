@@ -135,6 +135,7 @@ export function InsuranceAcquisition(): JSX.Element {
 
   // 신고 확인 Dialog
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [faxNumber, setFaxNumber] = useState('');
 
   // 스크롤 위치 감지 (하단 버튼 영역 그림자 제어)
   const [isAtBottom, setIsAtBottom] = useState(false);
@@ -1981,14 +1982,43 @@ export function InsuranceAcquisition(): JSX.Element {
             </div>
 
             {/* 사업장 정보 */}
-            <div className="flex items-center justify-between text-sm">
-              <div>
+            <div className="space-y-3">
+              <div className="text-sm">
                 <span className="text-gray-600">사업장: </span>
                 <span className="font-medium">{getShortAddress(workplace.address || '-')}</span>
               </div>
-              <div>
-                <span className="text-gray-600">공단 FAX: </span>
-                <span className="font-medium">02)1234-5678</span>
+
+              {/* 공단 FAX 번호 */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="faxNumber" className="text-sm font-medium">
+                    공단 FAX 번호
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('https://www.4insure.or.kr/pbiz/ntcn/selectInstBrofSrchView.do', '_blank')}
+                  >
+                    FAX번호 찾기
+                  </Button>
+                </div>
+                <Input
+                  id="faxNumber"
+                  value={faxNumber}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // 숫자, -, (, ) 만 허용
+                    if (/^[0-9()-]*$/.test(value)) {
+                      setFaxNumber(value);
+                    }
+                  }}
+                  placeholder="예: 02-1234-5678"
+                  className="text-sm"
+                />
+                <p className="text-xs text-gray-600">
+                  사업장 주소에 맞춰 공단 FAX 번호를 입력해주세요. 1개의 공단 FAX 번호만 입력해주시면 됩니다. (신고하려는 보험에 속하는 공단이어야 함)
+                </p>
               </div>
             </div>
           </div>
