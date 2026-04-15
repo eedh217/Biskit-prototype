@@ -249,22 +249,6 @@ export function DependentManagement(): JSX.Element {
     }));
   };
 
-  // 주민등록번호/외국인등록번호 포맷팅 (000000-0000000)
-  const handleResidentNumberChange = (value: string): void => {
-    // 숫자만 추출
-    const numbers = value.replace(/[^0-9]/g, '');
-
-    // 13자리 제한
-    const limited = numbers.slice(0, 13);
-
-    // 6자리 이후 하이픈 자동 추가
-    let formatted = limited;
-    if (limited.length > 6) {
-      formatted = `${limited.slice(0, 6)}-${limited.slice(6)}`;
-    }
-
-    handleEmployeeChange('residentNumber', formatted);
-  };
 
   // 피부양자 주민등록번호/외국인등록번호 포맷팅
   const handleDependentResidentNumberChange = (
@@ -361,7 +345,7 @@ export function DependentManagement(): JSX.Element {
     updatedDependents[dependentIndex] = {
       ...updatedDependents[dependentIndex],
       [field]: value,
-    };
+    } as DependentWithManagementInfo;
     handleEmployeeChange('dependents', updatedDependents);
   };
 
@@ -421,7 +405,7 @@ export function DependentManagement(): JSX.Element {
     }
 
     setWorkplace(tempData.workplace);
-    if (tempData.employees.length > 0) {
+    if (tempData.employees.length > 0 && tempData.employees[0]) {
       setEmployee(tempData.employees[0]);
     }
 
