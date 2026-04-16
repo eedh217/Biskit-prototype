@@ -14,6 +14,7 @@ import { LeaveManagement } from './modules/hr/pages/LeaveManagement';
 import { InsuranceAcquisition } from './modules/hr/pages/InsuranceAcquisition';
 import { InsuranceLoss } from './modules/hr/pages/InsuranceLoss';
 import { InsuranceSalaryChange } from './modules/hr/pages/InsuranceSalaryChange';
+import { InsuranceTotalSalary } from './modules/hr/pages/InsuranceTotalSalary';
 import { DependentManagement } from './modules/hr/pages/DependentManagement';
 import { Toaster } from './shared/components/ui/toaster';
 
@@ -133,6 +134,11 @@ export function App(): JSX.Element {
     // 인사 - 4대보험 관리 - 보수월액 변경
     if (pathname === '/hr/insurance/salary-change') {
       return <InsuranceSalaryChange key={currentPath} />;
+    }
+
+    // 인사 - 4대보험 관리 - 보수총액신고
+    if (pathname === '/hr/insurance/total-salary') {
+      return <InsuranceTotalSalary key={currentPath} />;
     }
 
     // 인사 - 4대보험 관리 - 피부양자 관리

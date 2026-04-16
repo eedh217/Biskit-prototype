@@ -57,6 +57,7 @@ const createDefaultEmployee = (): EmployeeSalaryChangeInfo => ({
   healthChangedSalary: 0,
   healthChangeMonth: 0,
   healthChangeReason: '',
+  isDifferentEmploymentWorkersCompSalary: false,
   employmentChangedSalary: 0,
   workersCompChangedSalary: 0,
   employmentWorkersCompChangeMonth: 0,
@@ -102,6 +103,7 @@ export function InsuranceSalaryChange(): JSX.Element {
 
   // 신고 확인 Dialog
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [faxNumber, setFaxNumber] = useState('');
 
   // 스크롤 위치 감지 (하단 버튼 영역 그림자 제어)
   const [isAtBottom, setIsAtBottom] = useState(false);
@@ -398,23 +400,30 @@ export function InsuranceSalaryChange(): JSX.Element {
   };
 
   // 신고 확인 다이얼로그용 주소 추출
-  // 서울특별시/광역시: 구까지, 도 지역: 시까지 표시
+  // 서울: 구까지, 광역시: 구까지, 도 지역: 시까지 표시
   const getShortAddress = (fullAddress: string): string => {
-    // 서울특별시, 광역시인 경우 구까지 표시
-    if (fullAddress.includes('서울특별시') || fullAddress.includes('광역시')) {
-      const match = fullAddress.match(/(.*?구)/);
-      return match ? match[0] : fullAddress.split(' ').slice(0, 2).join(' ');
+    // 서울특별시 또는 서울인 경우 "서울 구명"으로 표시
+    if (fullAddress.includes('서울특별시') || fullAddress.startsWith('서울 ')) {
+      const match = fullAddress.match(/(서울특별시|서울)\s*(.*?구)/);
+      return match ? `서울 ${match[2]}` : fullAddress.split(' ').slice(0, 2).join(' ');
     }
-    // 도 지역인 경우 시까지 표시
-    const match = fullAddress.match(/(.*?시)/);
-    return match ? match[0] : (fullAddress.split(' ')[0] ?? '');
+
+    // 광역시인 경우 "시명 구명"으로 표시
+    if (fullAddress.includes('광역시')) {
+      const match = fullAddress.match(/(.*?)광역시\s*(.*?구)/);
+      return match ? `${match[1]} ${match[2]}` : fullAddress.split(' ').slice(0, 2).join(' ');
+    }
+
+    // 도 지역인 경우 "도명 시명"으로 표시
+    const match = fullAddress.match(/(.*?도)\s*(.*?시)/);
+    return match ? `${match[1]} ${match[2]}` : (fullAddress.split(' ')[0] ?? '');
   };
 
   // 필수값 검증
   const isFormValid = useMemo(() => {
     // 사업장 정보 필수값 검증
     if (!workplace.managementNumber || !workplace.name || !workplace.postalCode ||
-        !workplace.address || !workplace.addressDetail) {
+        !workplace.address || !workplace.addressDetail || !workplace.phoneNumber) {
       return false;
     }
 
@@ -426,13 +435,14 @@ export function InsuranceSalaryChange(): JSX.Element {
     // 직원 정보 필수값 검증
     for (const emp of employees) {
       // 기본 정보
-      if (!emp.employeeId || !emp.name || !emp.residentNumber || !emp.changeMonth) {
+      if (!emp.employeeId || !emp.name || !emp.residentNumber || !emp.changeMonth || !emp.changeReason) {
         return false;
       }
 
       // 국민연금
       if (emp.applyPension) {
-        if (!emp.pensionChangedIncome || emp.pensionChangedIncome === 0) {
+        if (!emp.pensionCurrentIncome || emp.pensionCurrentIncome === 0 ||
+            !emp.pensionChangedIncome || emp.pensionChangedIncome === 0) {
           return false;
         }
       }
@@ -446,9 +456,20 @@ export function InsuranceSalaryChange(): JSX.Element {
 
       // 고용보험·산재보험
       if (emp.applyEmploymentInsurance || emp.applyWorkersCompensation) {
-        if (!emp.employmentChangedSalary || emp.employmentChangedSalary === 0 ||
-            !emp.workersCompChangedSalary || emp.workersCompChangedSalary === 0) {
-          return false;
+        // 둘 다 체크되고 다르지 않은 경우 (동일한 경우)
+        if (emp.applyEmploymentInsurance && emp.applyWorkersCompensation &&
+            !(emp.isDifferentEmploymentWorkersCompSalary ?? false)) {
+          if (!emp.employmentChangedSalary || emp.employmentChangedSalary === 0) {
+            return false;
+          }
+        } else {
+          // 개별 검증
+          if (emp.applyEmploymentInsurance && (!emp.employmentChangedSalary || emp.employmentChangedSalary === 0)) {
+            return false;
+          }
+          if (emp.applyWorkersCompensation && (!emp.workersCompChangedSalary || emp.workersCompChangedSalary === 0)) {
+            return false;
+          }
         }
       }
     }
@@ -637,7 +658,7 @@ export function InsuranceSalaryChange(): JSX.Element {
 
           <div className="grid grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="phoneNumber">전화번호</Label>
+              <Label htmlFor="phoneNumber">전화번호 *</Label>
               <Input
                 id="phoneNumber"
                 value={workplace.phoneNumber}
@@ -773,7 +794,7 @@ export function InsuranceSalaryChange(): JSX.Element {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>변경사유</Label>
+                          <Label>변경사유 *</Label>
                           <Input
                             value={employee.changeReason}
                             onChange={(e) =>
@@ -781,6 +802,7 @@ export function InsuranceSalaryChange(): JSX.Element {
                             }
                             onCompositionStart={() => setIsComposing(true)}
                             onCompositionEnd={() => setIsComposing(false)}
+                            placeholder="보수인상, 보수인하, 착오정정 등 입력"
                           />
                         </div>
                       </div>
@@ -844,10 +866,13 @@ export function InsuranceSalaryChange(): JSX.Element {
                     {/* 국민연금 */}
                     {employee.applyPension && (
                       <div className="border-t pt-4">
-                        <h4 className="font-medium mb-3">국민연금</h4>
+                        <h4 className="font-medium mb-2">국민연금</h4>
+                        <p className="text-sm text-gray-600 mb-3">
+                          기준소득월액 대비 실제 소득이 보건복지부장관이 고시하는 비율 이상으로 변동된 자만 신고해주세요.
+                        </p>
                         <div className="grid grid-cols-4 gap-4">
                           <div className="space-y-2">
-                            <Label>현재 기준소득월액</Label>
+                            <Label>현재 기준소득월액 *</Label>
                             <Input
                               type="text"
                               value={employee.pensionCurrentIncome ? employee.pensionCurrentIncome.toLocaleString('ko-KR') : ''}
@@ -881,21 +906,6 @@ export function InsuranceSalaryChange(): JSX.Element {
                               }}
                               placeholder="0"
                             />
-                          </div>
-                          <div className="flex items-center pt-7">
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                checked={employee.pensionWorkerConsent}
-                                onChange={(e) =>
-                                  handleEmployeeChange(
-                                    index,
-                                    'pensionWorkerConsent',
-                                    e.target.checked
-                                  )
-                                }
-                              />
-                              <Label>근로자 동의(서명 또는 인)</Label>
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -933,43 +943,124 @@ export function InsuranceSalaryChange(): JSX.Element {
                       employee.applyWorkersCompensation) && (
                       <div className="border-t pt-4">
                         <h4 className="font-medium mb-3">고용보험·산재보험</h4>
+
                         <div className="grid grid-cols-4 gap-4">
-                          <div className="space-y-2">
-                            <Label>고용보험 변경 후 월평균보수 *</Label>
-                            <Input
-                              type="text"
-                              value={employee.employmentChangedSalary ? employee.employmentChangedSalary.toLocaleString('ko-KR') : ''}
-                              onChange={(e) => {
-                                const numericValue = e.target.value.replace(/,/g, '');
-                                if (numericValue === '' || /^\d+$/.test(numericValue)) {
-                                  handleEmployeeChange(
-                                    index,
-                                    'employmentChangedSalary',
-                                    numericValue === '' ? 0 : Number(numericValue)
-                                  );
-                                }
-                              }}
-                              placeholder="0"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>산재보험 변경 후 월평균보수 *</Label>
-                            <Input
-                              type="text"
-                              value={employee.workersCompChangedSalary ? employee.workersCompChangedSalary.toLocaleString('ko-KR') : ''}
-                              onChange={(e) => {
-                                const numericValue = e.target.value.replace(/,/g, '');
-                                if (numericValue === '' || /^\d+$/.test(numericValue)) {
-                                  handleEmployeeChange(
-                                    index,
-                                    'workersCompChangedSalary',
-                                    numericValue === '' ? 0 : Number(numericValue)
-                                  );
-                                }
-                              }}
-                              placeholder="0"
-                            />
-                          </div>
+                          {/* 둘 다 체크되고 체크박스 해제된 경우(동일): 하나의 필드만 표시 */}
+                          {employee.applyEmploymentInsurance && employee.applyWorkersCompensation &&
+                           !(employee.isDifferentEmploymentWorkersCompSalary ?? false) ? (
+                            <>
+                              <div className="space-y-2">
+                                <Label>변경 후 월평균보수 *</Label>
+                                <Input
+                                  type="text"
+                                  value={employee.employmentChangedSalary ? employee.employmentChangedSalary.toLocaleString('ko-KR') : ''}
+                                  onChange={(e) => {
+                                    const numericValue = e.target.value.replace(/,/g, '');
+                                    if (numericValue === '' || /^\d+$/.test(numericValue)) {
+                                      const salary = numericValue === '' ? 0 : Number(numericValue);
+                                      // 두 필드에 동일한 값 설정
+                                      handleEmployeeChange(index, 'employmentChangedSalary', salary);
+                                      handleEmployeeChange(index, 'workersCompChangedSalary', salary);
+                                    }
+                                  }}
+                                  placeholder="0"
+                                />
+                              </div>
+                              {/* 둘 다 체크된 경우 체크박스 표시 */}
+                              <div className="flex items-end pb-2">
+                                <div className="flex items-center gap-2">
+                                  <Checkbox
+                                    checked={employee.isDifferentEmploymentWorkersCompSalary ?? false}
+                                    onChange={(e) =>
+                                      handleEmployeeChange(
+                                        index,
+                                        'isDifferentEmploymentWorkersCompSalary',
+                                        e.target.checked
+                                      )
+                                    }
+                                  />
+                                  <Label className="font-normal text-sm leading-tight">
+                                    고용보험과 산재보험의<br />
+                                    변경 후 월평균보수가 다른가요?
+                                  </Label>
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {/* 고용보험만 체크 또는 다른 경우 */}
+                              {employee.applyEmploymentInsurance && (
+                                <div className="space-y-2">
+                                  <Label>
+                                    {employee.applyWorkersCompensation && (employee.isDifferentEmploymentWorkersCompSalary ?? false)
+                                      ? '고용보험 변경 후 월평균보수 *'
+                                      : '변경 후 월평균보수 *'}
+                                  </Label>
+                                  <Input
+                                    type="text"
+                                    value={employee.employmentChangedSalary ? employee.employmentChangedSalary.toLocaleString('ko-KR') : ''}
+                                    onChange={(e) => {
+                                      const numericValue = e.target.value.replace(/,/g, '');
+                                      if (numericValue === '' || /^\d+$/.test(numericValue)) {
+                                        handleEmployeeChange(
+                                          index,
+                                          'employmentChangedSalary',
+                                          numericValue === '' ? 0 : Number(numericValue)
+                                        );
+                                      }
+                                    }}
+                                    placeholder="0"
+                                  />
+                                </div>
+                              )}
+                              {/* 산재보험만 체크 또는 다른 경우 */}
+                              {employee.applyWorkersCompensation && (
+                                <div className="space-y-2">
+                                  <Label>
+                                    {employee.applyEmploymentInsurance && (employee.isDifferentEmploymentWorkersCompSalary ?? false)
+                                      ? '산재보험 변경 후 월평균보수 *'
+                                      : '변경 후 월평균보수 *'}
+                                  </Label>
+                                  <Input
+                                    type="text"
+                                    value={employee.workersCompChangedSalary ? employee.workersCompChangedSalary.toLocaleString('ko-KR') : ''}
+                                    onChange={(e) => {
+                                      const numericValue = e.target.value.replace(/,/g, '');
+                                      if (numericValue === '' || /^\d+$/.test(numericValue)) {
+                                        handleEmployeeChange(
+                                          index,
+                                          'workersCompChangedSalary',
+                                          numericValue === '' ? 0 : Number(numericValue)
+                                        );
+                                      }
+                                    }}
+                                    placeholder="0"
+                                  />
+                                </div>
+                              )}
+                              {/* 둘 다 체크되고 다른 경우 체크박스 3열에 표시 */}
+                              {employee.applyEmploymentInsurance && employee.applyWorkersCompensation && (
+                                <div className="flex items-end pb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox
+                                      checked={employee.isDifferentEmploymentWorkersCompSalary ?? false}
+                                      onChange={(e) =>
+                                        handleEmployeeChange(
+                                          index,
+                                          'isDifferentEmploymentWorkersCompSalary',
+                                          e.target.checked
+                                        )
+                                      }
+                                    />
+                                    <Label className="font-normal text-sm leading-tight">
+                                      고용보험과 산재보험의<br />
+                                      변경 후 월평균보수가 다른가요?
+                                    </Label>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1267,14 +1358,50 @@ export function InsuranceSalaryChange(): JSX.Element {
             </div>
 
             {/* 사업장 정보 */}
-            <div className="flex items-center justify-between text-sm">
-              <div>
+            <div className="space-y-3">
+              <div className="text-sm">
                 <span className="text-gray-600">사업장: </span>
-                <span className="font-medium">{getShortAddress(workplace.address || '-')}</span>
+                <span className="font-medium">
+                  {(() => {
+                    const sharedWorkplace = loadWorkplaceInfo();
+                    return sharedWorkplace?.address
+                      ? getShortAddress(sharedWorkplace.address)
+                      : workplace.name || '-';
+                  })()}
+                </span>
               </div>
-              <div>
-                <span className="text-gray-600">공단 FAX: </span>
-                <span className="font-medium">02)1234-5678</span>
+
+              {/* 공단 FAX 번호 */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="faxNumber" className="text-sm font-medium">
+                    공단 FAX 번호
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open('https://www.4insure.or.kr/pbiz/ntcn/selectInstBrofSrchView.do', '_blank')}
+                  >
+                    FAX번호 찾기
+                  </Button>
+                </div>
+                <Input
+                  id="faxNumber"
+                  value={faxNumber}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // 숫자, -, (, ) 만 허용
+                    if (/^[0-9()-]*$/.test(value)) {
+                      setFaxNumber(value);
+                    }
+                  }}
+                  placeholder="예: 02-1234-5678"
+                  className="text-sm"
+                />
+                <p className="text-xs text-gray-600">
+                  사업장 주소에 맞춰 공단 FAX 번호를 입력해주세요. 1개의 공단 FAX 번호만 입력해주시면 됩니다. (신고하려는 보험에 속하는 공단이어야 함)
+                </p>
               </div>
             </div>
           </div>

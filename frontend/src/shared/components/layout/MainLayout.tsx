@@ -117,8 +117,13 @@ const HR_MENU_ITEMS: MenuItem[] = [
       },
       {
         id: 'insurance-salary-change',
-        label: '보수월액 변경',
+        label: '보수월액 변경신고',
         path: '/hr/insurance/salary-change',
+      },
+      {
+        id: 'insurance-total-salary',
+        label: '보수총액신고',
+        path: '/hr/insurance/total-salary',
       },
     ],
   },

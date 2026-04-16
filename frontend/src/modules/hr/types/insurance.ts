@@ -780,6 +780,7 @@ export interface EmployeeSalaryChangeInfo {
   healthChangeReason?: string; // 변경사유
 
   // 고용보험·산재보험
+  isDifferentEmploymentWorkersCompSalary?: boolean; // 고용보험과 산재보험의 변경 후 월평균보수 다름 여부
   employmentChangedSalary?: number; // 변경 후 월평균보수(고용보험)
   workersCompChangedSalary?: number; // 변경 후 월평균보수(산재보험)
   employmentWorkersCompChangeMonth?: number; // 보수 변경 월 (1~12)
@@ -921,3 +922,55 @@ export interface InsuranceSalaryChangeHistory {
   employees: EmployeeSalaryChangeInfo[]; // 직원 목록
   createdAt: string; // 생성 시각 (ISO 8601)
 }
+
+/**
+ * 보수총액신고 직원 정보
+ */
+export interface EmployeeTotalSalaryInfo {
+  // 기본 정보
+  employeeId?: string; // 직원 ID
+  employeeNumber: string; // 사번
+  name: string; // 성명
+  residentNumber: string; // 주민등록번호/외국인등록번호
+  reportYear: string; // 신고년도 (YYYY)
+  acquisitionDate?: string; // 자격취득일 (YYYY-MM-DD)
+
+  // 보험 적용 여부
+  applyPension: boolean; // 국민연금
+  applyHealthInsurance: boolean; // 건강보험
+  applyEmploymentInsurance: boolean; // 고용보험
+  applyWorkersCompensation: boolean; // 산재보험
+
+  // 보수총액
+  pensionReportType?: string; // 국민연금 신고유형
+  pensionTotalSalary: number; // 국민연금 보수총액
+  pensionWorkStartDate?: string; // 국민연금 근무시작일 (MM-DD)
+  pensionHasLeave?: boolean; // 국민연금 휴직 여부
+  pensionLeaveDays?: number; // 국민연금 실제 휴직일수
+  healthTotalSalary: number; // 건강보험 보수총액
+  healthWorkMonths?: number; // 건강보험 근무개월수 (1-12)
+  healthInsurancePremiumTotal?: number; // 건강보험 보험료 부과 총액
+  employmentTotalSalary: number; // 고용보험 보수총액
+  workersCompTotalSalary: number; // 산재보험 보수총액
+}
+
+/**
+ * 보수총액신고 폼 데이터
+ */
+export interface InsuranceTotalSalaryForm {
+  workplace: WorkplaceInfo; // 사업장 정보
+  employees: EmployeeTotalSalaryInfo[]; // 직원 목록
+  reportDate: string; // 신고일자 (YYYY-MM-DD)
+}
+
+/**
+ * 보수총액 신고내역
+ */
+export interface InsuranceTotalSalaryHistory {
+  id: string; // 고유 ID
+  reportDate: string; // 신고일자 (YYYY-MM-DD)
+  workplace: WorkplaceInfo; // 사업장 정보
+  employees: EmployeeTotalSalaryInfo[]; // 직원 목록
+  createdAt: string; // 생성 시각 (ISO 8601)
+}
+

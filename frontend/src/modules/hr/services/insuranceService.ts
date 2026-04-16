@@ -4,10 +4,12 @@ import {
   InsuranceAcquisitionHistory,
   InsuranceLossHistory,
   InsuranceSalaryChangeHistory,
+  InsuranceTotalSalaryHistory,
   DependentManagementHistory,
   EmployeeInsuranceInfo,
   EmployeeLossInfo,
   EmployeeSalaryChangeInfo,
+  EmployeeTotalSalaryInfo,
   EmployeeDependentManagement,
 } from '../types/insurance';
 
@@ -18,6 +20,7 @@ const TEMP_FORM_STORAGE_KEY = 'biskit_insurance_acquisition_temp';
 const ACQUISITION_HISTORY_KEY = 'biskit_insurance_acquisition_history';
 const LOSS_HISTORY_KEY = 'biskit_insurance_loss_history';
 const SALARY_CHANGE_HISTORY_KEY = 'biskit_insurance_salary_change_history';
+const TOTAL_SALARY_HISTORY_KEY = 'biskit_insurance_total_salary_history';
 const DEPENDENT_MANAGEMENT_HISTORY_KEY = 'biskit_dependent_management_history';
 
 /**
@@ -334,6 +337,44 @@ export function getDependentManagementHistories(
     }
 
     return histories;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 보수총액 신고내역 저장
+ */
+export function saveTotalSalaryHistory(
+  reportDate: string,
+  workplace: WorkplaceInfo,
+  employees: EmployeeTotalSalaryInfo[]
+): InsuranceTotalSalaryHistory {
+  const history: InsuranceTotalSalaryHistory = {
+    id: crypto.randomUUID(),
+    reportDate,
+    workplace,
+    employees,
+    createdAt: new Date().toISOString(),
+  };
+
+  const stored = localStorage.getItem(TOTAL_SALARY_HISTORY_KEY);
+  const histories: InsuranceTotalSalaryHistory[] = stored ? JSON.parse(stored) : [];
+  histories.unshift(history);
+  localStorage.setItem(TOTAL_SALARY_HISTORY_KEY, JSON.stringify(histories));
+
+  return history;
+}
+
+/**
+ * 보수총액 신고내역 조회
+ */
+export function getTotalSalaryHistories(): InsuranceTotalSalaryHistory[] {
+  const stored = localStorage.getItem(TOTAL_SALARY_HISTORY_KEY);
+  if (!stored) return [];
+
+  try {
+    return JSON.parse(stored);
   } catch {
     return [];
   }
