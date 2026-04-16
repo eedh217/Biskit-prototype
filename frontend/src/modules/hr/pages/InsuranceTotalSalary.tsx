@@ -146,19 +146,23 @@ export function InsuranceTotalSalary(): JSX.Element {
 
     // 스크롤 이벤트 리스너
     const mainElement = document.querySelector('main');
-    if (mainElement) {
-      const handleScroll = (): void => {
+    const handleScroll = (): void => {
+      if (mainElement) {
         const { scrollTop, scrollHeight, clientHeight } = mainElement;
         setIsAtBottom(scrollTop + clientHeight >= scrollHeight - 10);
-      };
+      }
+    };
 
+    if (mainElement) {
       mainElement.addEventListener('scroll', handleScroll);
       handleScroll(); // 초기 상태 확인
-
-      return () => {
-        mainElement.removeEventListener('scroll', handleScroll);
-      };
     }
+
+    return () => {
+      if (mainElement) {
+        mainElement.removeEventListener('scroll', handleScroll);
+      }
+    };
   }, []);
 
   // 사업장 정보 변경
@@ -167,10 +171,10 @@ export function InsuranceTotalSalary(): JSX.Element {
   };
 
   // 주소 검색 완료
-  const handleAddressComplete = (data: { postalCode: string; address: string }): void => {
+  const handleAddressComplete = (data: { zonecode: string; address: string }): void => {
     setWorkplace((prev) => ({
       ...prev,
-      postalCode: data.postalCode,
+      postalCode: data.zonecode,
       address: data.address,
     }));
     setAddressDialogOpen(false);
@@ -215,18 +219,25 @@ export function InsuranceTotalSalary(): JSX.Element {
     const parts = value.split('-');
     if (parts.length !== 2) return false;
 
-    const month = parseInt(parts[0], 10);
-    const day = parseInt(parts[1], 10);
+    const monthStr = parts[0];
+    const dayStr = parts[1];
+
+    if (!monthStr || !dayStr) return false;
+
+    const month = parseInt(monthStr, 10);
+    const day = parseInt(dayStr, 10);
 
     // 월 검증 (01-12)
-    if (month < 1 || month > 12) return false;
+    if (isNaN(month) || month < 1 || month > 12) return false;
 
     // 각 월별 최대 일수
     const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     const maxDay = daysInMonth[month - 1];
 
+    if (!maxDay) return false;
+
     // 일 검증
-    if (day < 1 || day > maxDay) return false;
+    if (isNaN(day) || day < 1 || day > maxDay) return false;
 
     return true;
   };
