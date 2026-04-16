@@ -129,6 +129,22 @@ const HR_MENU_ITEMS: MenuItem[] = [
   },
 ];
 
+// 급여 메뉴 구조
+const PAYROLL_MENU_ITEMS: MenuItem[] = [
+  {
+    id: 'payroll-ledger',
+    label: '급여대장',
+    path: '/payroll/ledger',
+    children: [],
+  },
+  {
+    id: 'payroll-items',
+    label: '급여항목',
+    path: '/payroll/items',
+    children: [],
+  },
+];
+
 export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProps): JSX.Element {
   const [selectedModule, setSelectedModule] = useState<string>('statement');
   const mainRef = useRef<HTMLDivElement>(null);
@@ -139,6 +155,8 @@ export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProp
 
     if (pathname.startsWith('/hr')) {
       setSelectedModule('hr');
+    } else if (pathname.startsWith('/payroll')) {
+      setSelectedModule('payroll');
     } else if (pathname.startsWith('/statement') || pathname === '/') {
       setSelectedModule('statement');
     }
@@ -158,6 +176,8 @@ export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProp
       onNavigate('/statement/business-income/monthly');
     } else if (module === 'hr') {
       onNavigate('/hr/employee');
+    } else if (module === 'payroll') {
+      onNavigate('/payroll/ledger');
     }
   };
 
@@ -180,6 +200,15 @@ export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProp
         <LNB
           title="인사"
           menuItems={HR_MENU_ITEMS}
+          currentPath={currentPath}
+          onNavigate={onNavigate}
+        />
+      )}
+
+      {selectedModule === 'payroll' && (
+        <LNB
+          title="급여"
+          menuItems={PAYROLL_MENU_ITEMS}
           currentPath={currentPath}
           onNavigate={onNavigate}
         />

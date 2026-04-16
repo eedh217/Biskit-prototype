@@ -106,7 +106,7 @@ export function EmployeeCombobox({
                   <div className="flex flex-col">
                     <span className="font-medium">{employee.name}</span>
                     <span className="text-xs text-gray-500">
-                      {employee.employeeNumber} · {employee.departmentId || '부서 미지정'}
+                      {employee.employeeNumber}
                     </span>
                   </div>
                 </CommandItem>

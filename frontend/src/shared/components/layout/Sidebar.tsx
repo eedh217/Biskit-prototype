@@ -1,5 +1,5 @@
 import { Button } from '@/shared/components/ui/button';
-import { FileText, Users } from 'lucide-react';
+import { FileText, Users, Wallet } from 'lucide-react';
 
 interface SidebarProps {
   selectedModule: string;
@@ -27,6 +27,20 @@ export function Sidebar({ selectedModule, onModuleChange }: SidebarProps): JSX.E
         title="인사"
       >
         <Users className="h-6 w-6" />
+      </Button>
+
+      <Button
+        variant={selectedModule === 'payroll' ? 'secondary' : 'ghost'}
+        size="icon"
+        className={`w-12 h-12 ${
+          selectedModule === 'payroll'
+            ? 'bg-slate-700 text-white hover:bg-slate-600'
+            : 'text-slate-400 hover:text-white hover:bg-slate-700'
+        }`}
+        onClick={() => onModuleChange('payroll')}
+        title="급여"
+      >
+        <Wallet className="h-6 w-6" />
       </Button>
 
       <Button
