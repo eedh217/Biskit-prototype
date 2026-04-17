@@ -12,10 +12,13 @@ import { JobLevelManagement } from './modules/hr/pages/JobLevelManagement';
 import { EmploymentTypeManagement } from './modules/hr/pages/EmploymentTypeManagement';
 import { LeaveManagement } from './modules/hr/pages/LeaveManagement';
 import { InsuranceAcquisition } from './modules/hr/pages/InsuranceAcquisition';
+import { InsuranceAcquisitionList } from './modules/hr/pages/InsuranceAcquisitionList';
+import { InsuranceAcquisitionDetail } from './modules/hr/pages/InsuranceAcquisitionDetail';
 import { InsuranceLoss } from './modules/hr/pages/InsuranceLoss';
 import { InsuranceSalaryChange } from './modules/hr/pages/InsuranceSalaryChange';
 import { InsuranceTotalSalary } from './modules/hr/pages/InsuranceTotalSalary';
 import { DependentManagement } from './modules/hr/pages/DependentManagement';
+import { PayrollItems } from './modules/payroll/pages/PayrollItems';
 import { Toaster } from './shared/components/ui/toaster';
 
 export function App(): JSX.Element {
@@ -121,9 +124,19 @@ export function App(): JSX.Element {
       return <LeaveManagement key={currentPath} />;
     }
 
-    // 인사 - 4대보험 관리 - 자격 취득신고
-    if (pathname === '/hr/insurance/acquisition') {
+    // 인사 - 4대보험 관리 - 자격 취득신고 (상세)
+    if (pathname.startsWith('/hr/insurance/acquisition/detail/')) {
+      return <InsuranceAcquisitionDetail key={currentPath} />;
+    }
+
+    // 인사 - 4대보험 관리 - 자격 취득신고 (신규/편집)
+    if (pathname.startsWith('/hr/insurance/acquisition/new') || pathname.startsWith('/hr/insurance/acquisition/edit/')) {
       return <InsuranceAcquisition key={currentPath} />;
+    }
+
+    // 인사 - 4대보험 관리 - 자격 취득신고 (리스트)
+    if (pathname === '/hr/insurance/acquisition') {
+      return <InsuranceAcquisitionList key={currentPath} />;
     }
 
     // 인사 - 4대보험 관리 - 자격 상실신고
@@ -151,6 +164,21 @@ export function App(): JSX.Element {
       return (
         <div className="p-8">
           <h1 className="text-2xl font-bold text-slate-800">근태관리</h1>
+          <p className="text-slate-600 mt-2">준비 중입니다.</p>
+        </div>
+      );
+    }
+
+    // 급여 - 급여항목
+    if (pathname === '/payroll/items') {
+      return <PayrollItems key={currentPath} />;
+    }
+
+    // 급여 - 급여대장
+    if (pathname === '/payroll/ledger' || pathname === '/payroll') {
+      return (
+        <div className="p-8">
+          <h1 className="text-2xl font-bold text-slate-800">급여대장</h1>
           <p className="text-slate-600 mt-2">준비 중입니다.</p>
         </div>
       );

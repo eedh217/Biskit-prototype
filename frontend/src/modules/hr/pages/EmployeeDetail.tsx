@@ -5,6 +5,14 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Switch } from '@/shared/components/ui/switch';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/components/ui/table';
 import { employeeService } from '../services/employeeService';
 import { organizationService } from '../services/organizationService';
 import { jobLevelService } from '../services/jobLevelService';
@@ -449,41 +457,63 @@ export function EmployeeDetail(): JSX.Element {
                   수정
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-3 pt-6">
+              <CardContent className="space-y-6 pt-6">
+                {/* 연봉 */}
                 <div className="grid grid-cols-4 gap-4">
-                  <span className="text-sm font-medium text-gray-500">계약급여 타입</span>
-                  <span className="col-span-3 text-sm">{employee.salaryType || '-'}</span>
-                </div>
-
-                <div className="grid grid-cols-4 gap-4">
-                  <span className="text-sm font-medium text-gray-500">계약급여 금액</span>
+                  <span className="text-sm font-medium text-gray-500">연봉</span>
                   <span className="col-span-3 text-sm">
-                    {employee.salaryAmount ? `${formatNumber(employee.salaryAmount)}원` : '-'}
+                    {employee.annualSalary ? `${formatNumber(employee.annualSalary)}원` : '-'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-4 gap-4">
-                  <span className="text-sm font-medium text-gray-500">
-                    식대 {employee.salaryType === '연봉' ? '(월)' : employee.salaryType === '시급' ? '(일)' : ''}
-                  </span>
-                  <span className="col-span-3 text-sm">
-                    {employee.mealAllowance ? `${formatNumber(employee.mealAllowance)}원` : '-'}
-                  </span>
+                {/* 급여항목 템플릿 */}
+                <div className="space-y-3">
+                  {employee.payrollTemplate && employee.payrollTemplate.length > 0 ? (
+                    <>
+                      {[
+                        ...employee.payrollTemplate.filter(item => item.category === 'taxable'),
+                        ...employee.payrollTemplate.filter(item => item.category === 'non-taxable'),
+                      ].map((item, index) => (
+                        <div key={index} className="grid grid-cols-4 gap-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-500">
+                              {item.category === 'non-taxable' && item.itemCode !== item.itemName
+                                ? `${item.itemCode} - ${item.itemName}`
+                                : item.itemName}
+                            </span>
+                            {item.category === 'non-taxable' && (
+                              <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                                비과세
+                              </span>
+                            )}
+                          </div>
+                          <span className="col-span-3 text-sm">{formatNumber(item.amount)}원</span>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="text-sm text-gray-400 py-4 text-center border border-dashed rounded-md">
+                      등록된 급여항목이 없습니다
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-4 gap-4">
-                  <span className="text-sm font-medium text-gray-500">은행</span>
-                  <span className="col-span-3 text-sm">{employee.bankName || '-'}</span>
-                </div>
+                {/* 계좌정보 */}
+                <div className="pt-4 border-t space-y-3">
+                  <div className="grid grid-cols-4 gap-4">
+                    <span className="text-sm font-medium text-gray-500">은행</span>
+                    <span className="col-span-3 text-sm">{employee.bankName || '-'}</span>
+                  </div>
 
-                <div className="grid grid-cols-4 gap-4">
-                  <span className="text-sm font-medium text-gray-500">예금주</span>
-                  <span className="col-span-3 text-sm">{employee.accountHolder || '-'}</span>
-                </div>
+                  <div className="grid grid-cols-4 gap-4">
+                    <span className="text-sm font-medium text-gray-500">예금주</span>
+                    <span className="col-span-3 text-sm">{employee.accountHolder || '-'}</span>
+                  </div>
 
-                <div className="grid grid-cols-4 gap-4">
-                  <span className="text-sm font-medium text-gray-500">계좌번호</span>
-                  <span className="col-span-3 text-sm">{employee.accountNumber || '-'}</span>
+                  <div className="grid grid-cols-4 gap-4">
+                    <span className="text-sm font-medium text-gray-500">계좌번호</span>
+                    <span className="col-span-3 text-sm">{employee.accountNumber || '-'}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>

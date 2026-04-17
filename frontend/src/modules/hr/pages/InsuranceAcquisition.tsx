@@ -29,6 +29,7 @@ import {
   TableRow,
 } from '@/shared/components/ui/table';
 import { EmployeeCombobox } from '../components/EmployeeCombobox';
+import { JobCodeCombobox } from '../components/JobCodeCombobox';
 import { AddressSearchDialog } from '../components/AddressSearchDialog';
 import { toast } from '@/shared/hooks/use-toast';
 import {
@@ -39,7 +40,6 @@ import {
   PENSION_ACQUISITION_CODES,
   HEALTH_ACQUISITION_CODES,
   PREMIUM_REDUCTION_CODES,
-  EMPLOYMENT_JOB_CODES,
   SPECIAL_OCCUPATION_CODES,
   OCCUPATIONAL_PENSION_CODES,
   DEPENDENT_RELATIONSHIP_CODES,
@@ -57,6 +57,7 @@ import {
   saveAcquisitionHistory,
   getAcquisitionHistories,
 } from '../services/insuranceService';
+import { acquisitionReportService } from '../services/acquisitionReportService';
 import type { Employee } from '../types/employee';
 import { COUNTRIES } from '@/shared/constants/countries';
 
@@ -99,6 +100,23 @@ const createDefaultEmployee = (): EmployeeInsuranceInfo => ({
 export function InsuranceAcquisition(): JSX.Element {
   const [isComposing, setIsComposing] = useState(false);
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
+  const [workplaceDialogOpen, setWorkplaceDialogOpen] = useState(false);
+  const [workplaceEditData, setWorkplaceEditData] = useState<WorkplaceInfo>({
+    managementNumber: '',
+    name: '',
+    unitName: '',
+    branchName: '',
+    postalCode: '',
+    address: '',
+    addressDetail: '',
+    phoneNumber: '',
+    faxNumber: '',
+    email: '',
+    mobilePhone: '',
+  });
+
+  // 편집 모드 정보
+  const [reportId, setReportId] = useState<string | null>(null);
 
   // 사업장 정보
   const [workplace, setWorkplace] = useState<WorkplaceInfo>({
@@ -117,7 +135,7 @@ export function InsuranceAcquisition(): JSX.Element {
 
   // 직원 목록 (초기에 빈 직원 1명 추가)
   const [employees, setEmployees] = useState<EmployeeInsuranceInfo[]>([createDefaultEmployee()]);
-  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(new Set());
+  const [selectedEmployeeIndex, setSelectedEmployeeIndex] = useState(0);
 
   // 임시저장 정보
   const [hasTempData, setHasTempData] = useState(false);
@@ -135,23 +153,71 @@ export function InsuranceAcquisition(): JSX.Element {
 
   // 신고 확인 Dialog
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [showErrors, setShowErrors] = useState(false);
+  const [workplaceFaxNumber, setWorkplaceFaxNumber] = useState('');
   const [faxNumber, setFaxNumber] = useState('');
+
+  // FAX 정보 로드 (다이얼로그 열릴 때)
+  useEffect(() => {
+    if (confirmDialogOpen) {
+      const savedFaxInfo = localStorage.getItem('biskit_insurance_fax_info');
+      if (savedFaxInfo) {
+        const faxInfo = JSON.parse(savedFaxInfo);
+        setWorkplaceFaxNumber(faxInfo.workplaceFaxNumber || '');
+        setFaxNumber(faxInfo.agencyFaxNumber || '');
+      }
+    }
+  }, [confirmDialogOpen]);
 
   // 스크롤 위치 감지 (하단 버튼 영역 그림자 제어)
   const [isAtBottom, setIsAtBottom] = useState(false);
 
   // 초기 데이터 로드
   useEffect(() => {
-    const savedWorkplace = loadWorkplaceInfo();
-    if (savedWorkplace) {
-      setWorkplace(savedWorkplace);
-    }
+    const loadInitialData = async (): Promise<void> => {
+      // URL에서 편집 모드인지 확인
+      const pathParts = window.location.pathname.split('/');
+      const isEditMode = pathParts.includes('edit');
+      const id = isEditMode ? pathParts[pathParts.length - 1] : null;
 
-    const tempData = loadTempForm();
-    if (tempData) {
-      setHasTempData(true);
-      setTempSavedAt(tempData.savedAt || '');
-    }
+      // 편집 모드인 경우 리포트 데이터 불러오기
+      if (isEditMode && id) {
+        setReportId(id); // reportId 상태 저장
+        try {
+          const report = await acquisitionReportService.getById(id);
+          if (report && report.formData) {
+            // formData에서 workplace와 employees 복원
+            setWorkplace(report.formData.workplace);
+            setEmployees(report.formData.employees);
+
+            toast({
+              title: '작성중인 신고 데이터를 불러왔습니다.',
+            });
+            return; // 편집 모드면 아래 로직 실행하지 않음
+          }
+        } catch (error) {
+          console.error('Failed to load report data:', error);
+          toast({
+            title: '데이터를 불러오는데 실패했습니다.',
+            variant: 'destructive',
+          });
+        }
+      }
+
+      // 신규 모드인 경우 사업장 정보만 불러오기
+      const savedWorkplace = loadWorkplaceInfo();
+      if (savedWorkplace) {
+        setWorkplace(savedWorkplace);
+      }
+
+      const tempData = loadTempForm();
+      if (tempData) {
+        setHasTempData(true);
+        setTempSavedAt(tempData.savedAt || '');
+      }
+    };
+
+    loadInitialData();
   }, []);
 
   // 신고내역 Dialog 열릴 때 기본 기간 설정 (1개월)
@@ -189,23 +255,40 @@ export function InsuranceAcquisition(): JSX.Element {
     };
   }, []);
 
-  // 사업장 정보 변경 핸들러
-  const handleWorkplaceChange = (field: keyof WorkplaceInfo, value: string): void => {
-    setWorkplace((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  // 주소 검색 완료
+  // 주소 검색 완료 (다이얼로그 내)
   const handleAddressComplete = (data: { zonecode: string; address: string }): void => {
-    setWorkplace((prev) => ({
+    setWorkplaceEditData((prev) => ({
       ...prev,
       postalCode: data.zonecode,
       address: data.address,
     }));
     setAddressDialogOpen(false);
   };
+
+  // 사업장 정보 수정 다이얼로그 열기
+  const handleOpenWorkplaceDialog = (): void => {
+    setWorkplaceEditData({ ...workplace });
+    setWorkplaceDialogOpen(true);
+  };
+
+  // 사업장 정보 수정 다이얼로그 내 필드 변경
+  const handleWorkplaceEditChange = (field: keyof WorkplaceInfo, value: string): void => {
+    setWorkplaceEditData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // 사업장 정보 수정 저장
+  const handleWorkplaceEditSave = (): void => {
+    setWorkplace({ ...workplaceEditData });
+    setWorkplaceDialogOpen(false);
+  };
+
+  const isWorkplaceEditValid =
+    !!workplaceEditData.managementNumber &&
+    !!workplaceEditData.name &&
+    !!workplaceEditData.postalCode &&
+    !!workplaceEditData.address &&
+    !!workplaceEditData.addressDetail &&
+    !!workplaceEditData.phoneNumber;
 
   // 직원 추가
   // 직원 정보 변경
@@ -378,12 +461,15 @@ export function InsuranceAcquisition(): JSX.Element {
       return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
     };
 
-    // 월소득액 계산: 연봉이면 12로 나누기, 시급이면 0
+    // 월소득액 계산: 과세 항목 합계
     const calculateMonthlySalary = (): number => {
-      if (employee.salaryType === '연봉' && employee.salaryAmount) {
-        return Math.round(employee.salaryAmount / 12);
+      if (!employee.payrollTemplate || employee.payrollTemplate.length === 0) {
+        return 0;
       }
-      return 0;
+      const taxableTotal = employee.payrollTemplate
+        .filter((item) => item.category === 'taxable')
+        .reduce((sum, item) => sum + item.amount, 0);
+      return taxableTotal;
     };
 
     setEmployees((prev) => {
@@ -403,29 +489,21 @@ export function InsuranceAcquisition(): JSX.Element {
     });
   };
 
-  // 직원 삭제 (다중)
-  const handleDeleteEmployees = (): void => {
-    if (selectedEmployeeIds.size === 0) {
-      toast({
-        title: '삭제할 직원을 선택하세요.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setEmployees((prev) =>
-      prev.filter((_, index) => !selectedEmployeeIds.has(String(index)))
-    );
-    setSelectedEmployeeIds(new Set());
+  // 직원 추가
+  const handleAddEmployee = (): void => {
+    setEmployees((prev) => [...prev, createDefaultEmployee()]);
+    setSelectedEmployeeIndex(employees.length);
   };
 
   // 직원 삭제 (단일)
   const handleDeleteSingleEmployee = (index: number): void => {
-    setEmployees((prev) => prev.filter((_, i) => i !== index));
-    // 선택 목록에서도 제거
-    const newSelected = new Set(selectedEmployeeIds);
-    newSelected.delete(String(index));
-    setSelectedEmployeeIds(newSelected);
+    const newEmployees = employees.filter((_, i) => i !== index);
+    setEmployees(newEmployees);
+    if (index >= newEmployees.length) {
+      setSelectedEmployeeIndex(newEmployees.length - 1);
+    } else {
+      setSelectedEmployeeIndex(index);
+    }
   };
 
 
@@ -504,21 +582,73 @@ export function InsuranceAcquisition(): JSX.Element {
   };
 
   // 임시 저장
-  const handleTempSave = (): void => {
-    const formData: InsuranceAcquisitionForm = {
-      workplace,
-      employees,
-      reportDate: format(new Date(), 'yyyy-MM-dd'),
-    };
+  const handleTempSave = async (): Promise<void> => {
+    try {
+      const now = new Date();
+      const reportDate = now.toISOString();
 
-    saveTempForm(formData);
-    const now = new Date().toISOString();
-    setHasTempData(true);
-    setTempSavedAt(now);
+      // 직원 데이터 변환
+      const employeeList = employees
+        .filter(emp => emp.employeeId) // 직원이 선택된 항목만
+        .map(emp => ({
+          employeeId: emp.employeeId,
+          employeeName: emp.name,
+          employeeNumber: emp.employeeNumber,
+        }));
 
-    toast({
-      title: '임시 저장되었습니다.',
-    });
+      if (employeeList.length === 0) {
+        toast({
+          title: '직원을 선택해주세요.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const reportData = {
+        reportDate,
+        status: 'draft' as const,
+        faxStatus: 'success' as const,
+        employees: employeeList,
+        formData: {
+          workplace,
+          employees,
+        },
+      };
+
+      // 편집 모드면 업데이트, 신규 모드면 새로 생성
+      if (reportId) {
+        // 기존 리포트 업데이트
+        await acquisitionReportService.updateDraft(reportId, reportData);
+      } else {
+        // 새로운 리포트 생성
+        const newReport = await acquisitionReportService.saveDraft(reportData);
+        // 생성 후 reportId 저장 (다음 임시저장 시 업데이트되도록)
+        setReportId(newReport.id);
+
+        // URL을 편집 모드로 변경
+        window.history.replaceState({}, '', `/hr/insurance/acquisition/edit/${newReport.id}`);
+      }
+
+      // 기존 임시저장도 유지
+      const formData: InsuranceAcquisitionForm = {
+        workplace,
+        employees,
+        reportDate: format(new Date(), 'yyyy-MM-dd'),
+      };
+      saveTempForm(formData);
+      setHasTempData(true);
+      setTempSavedAt(now.toISOString());
+
+      toast({
+        title: '임시 저장되었습니다.',
+      });
+    } catch (error) {
+      console.error('Failed to save draft:', error);
+      toast({
+        title: '임시 저장에 실패했습니다.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // 임시 저장 불러오기
@@ -597,121 +727,145 @@ export function InsuranceAcquisition(): JSX.Element {
     return match ? `${match[1]} ${match[2]}` : (fullAddress.split(' ')[0] ?? '');
   };
 
+  // 직원 개별 유효성 검사
+  const isEmployeeValid = (emp: EmployeeInsuranceInfo): boolean => {
+    if (!emp.employeeId || !emp.name || !emp.residentNumber || !emp.nationality ||
+        !emp.monthlySalary || emp.monthlySalary === 0 || !emp.acquisitionDate) {
+      return false;
+    }
+    if (emp.nationality !== 'KR' && !emp.residenceStatus) return false;
+    if (emp.applyPension) {
+      if (!emp.pensionAcquisitionCode || !emp.specialOccupationCode || !emp.occupationalPensionCode) return false;
+    }
+    if (emp.applyHealthInsurance) {
+      if (!emp.healthAcquisitionCode || !emp.premiumReductionCode) return false;
+      if (emp.isPublicOfficial) {
+        if (!emp.accountName || !emp.accountCode || !emp.jobName || !emp.jobCode) return false;
+      }
+      if (emp.applyForDependent && emp.dependents) {
+        for (const dep of emp.dependents) {
+          if (!dep.relationship || !dep.name || !dep.residentNumber) return false;
+          if (dep.isDisabledOrVeteran) {
+            if (!dep.disabilityTypeCode || !dep.registrationDate) return false;
+          }
+          if (dep.isForeigner) {
+            if (!dep.nationality || !dep.residenceStatus || !dep.residencePeriod) return false;
+          }
+        }
+      }
+    }
+    if (emp.applyEmploymentInsurance || emp.applyWorkersCompensation) {
+      if (!emp.employmentJobCode || !emp.weeklyWorkHours || emp.weeklyWorkHours === 0) return false;
+      if (emp.isContractWorker && !emp.contractEndDate) return false;
+    }
+    return true;
+  };
+
   // 필수값 검증
   const isFormValid = useMemo(() => {
-    // 사업장 정보 필수값 검증
     if (!workplace.managementNumber || !workplace.name || !workplace.postalCode ||
         !workplace.address || !workplace.addressDetail || !workplace.phoneNumber) {
       return false;
     }
-
-    // 직원이 없으면 false
-    if (employees.length === 0) {
-      return false;
-    }
-
-    // 직원 정보 필수값 검증
-    for (const emp of employees) {
-      // 기본 정보
-      if (!emp.employeeId || !emp.name || !emp.residentNumber || !emp.nationality ||
-          !emp.monthlySalary || emp.monthlySalary === 0 || !emp.acquisitionDate) {
-        return false;
-      }
-
-      // 외국인인 경우 체류자격 필수 (국적이 한국이 아닌 경우)
-      if (emp.nationality !== 'KR' && !emp.residenceStatus) {
-        return false;
-      }
-
-      // 국민연금
-      if (emp.applyPension) {
-        if (!emp.pensionAcquisitionCode || !emp.specialOccupationCode || !emp.occupationalPensionCode) {
-          return false;
-        }
-      }
-
-      // 건강보험
-      if (emp.applyHealthInsurance) {
-        if (!emp.healthAcquisitionCode || !emp.premiumReductionCode) {
-          return false;
-        }
-
-        // 공무원·교직원인 경우
-        if (emp.isPublicOfficial) {
-          if (!emp.accountName || !emp.accountCode || !emp.jobName || !emp.jobCode) {
-            return false;
-          }
-        }
-
-        // 피부양자 신청한 경우
-        if (emp.applyForDependent && emp.dependents) {
-          for (const dep of emp.dependents) {
-            if (!dep.relationship || !dep.name || !dep.residentNumber) {
-              return false;
-            }
-
-            // 장애인·국가유공자인 경우
-            if (dep.isDisabledOrVeteran) {
-              if (!dep.disabilityTypeCode || !dep.registrationDate) {
-                return false;
-              }
-            }
-
-            // 외국인인 경우
-            if (dep.isForeigner) {
-              if (!dep.nationality || !dep.residenceStatus || !dep.residencePeriod) {
-                return false;
-              }
-            }
-          }
-        }
-      }
-
-      // 고용보험·산재보험
-      if (emp.applyEmploymentInsurance || emp.applyWorkersCompensation) {
-        if (!emp.employmentJobCode || !emp.weeklyWorkHours || emp.weeklyWorkHours === 0) {
-          return false;
-        }
-
-        // 계약직인 경우
-        if (emp.isContractWorker && !emp.contractEndDate) {
-          return false;
-        }
-      }
-    }
-
-    return true;
+    if (employees.length === 0) return false;
+    return employees.every(isEmployeeValid);
   }, [workplace, employees]);
 
   // 신고하기 버튼 클릭 (확인 다이얼로그 열기)
   const handleSubmit = (): void => {
+    if (!isFormValid) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
     setConfirmDialogOpen(true);
   };
 
   // 신고 확인 후 실제 신고 처리
-  const handleConfirmSubmit = (): void => {
-    // 신고내역 저장
-    const reportDate = format(new Date(), 'yyyy-MM-dd');
-    saveAcquisitionHistory(reportDate, workplace, employees);
+  const handleConfirmSubmit = async (): Promise<void> => {
+    try {
+      const now = new Date();
+      const reportDate = now.toISOString();
 
-    // 사업장 정보 저장
-    saveWorkplaceInfo(workplace);
+      // 직원 데이터 변환
+      const employeeList = employees
+        .filter(emp => emp.employeeId)
+        .map(emp => ({
+          employeeId: emp.employeeId,
+          employeeName: emp.name,
+          employeeNumber: emp.employeeNumber,
+        }));
 
-    // 임시 저장 데이터 삭제
-    clearTempForm();
-    setHasTempData(false);
-    setTempSavedAt('');
+      if (employeeList.length === 0) {
+        toast({
+          title: '직원을 선택해주세요.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-    toast({
-      title: '자격취득 신고가 완료되었습니다.',
-    });
+      let completedReport;
 
-    // 초기화 (기본 직원 1명 추가)
-    setEmployees([createDefaultEmployee()]);
-    setSelectedEmployeeIds(new Set());
+      if (reportId) {
+        // 편집 모드: 기존 draft를 complete 상태로 업데이트
+        completedReport = await acquisitionReportService.complete(reportId, {
+          reportDate,
+          employees: employeeList,
+          formData: {
+            workplace,
+            employees,
+          },
+        });
+      } else {
+        // 신규 모드: 새 draft를 만들고 즉시 complete
+        const draftReport = await acquisitionReportService.saveDraft({
+          reportDate,
+          status: 'draft',
+          faxStatus: 'success',
+          employees: employeeList,
+          formData: {
+            workplace,
+            employees,
+          },
+        });
 
-    // 확인 다이얼로그 닫기
-    setConfirmDialogOpen(false);
+        completedReport = await acquisitionReportService.complete(draftReport.id, {});
+      }
+
+      // 기존 신고내역 저장 (호환성 유지)
+      saveAcquisitionHistory(format(new Date(), 'yyyy-MM-dd'), workplace, employees);
+
+      // 사업장 정보 저장
+      saveWorkplaceInfo(workplace);
+
+      // FAX 정보 저장
+      localStorage.setItem('biskit_insurance_fax_info', JSON.stringify({
+        workplaceFaxNumber,
+        agencyFaxNumber: faxNumber,
+      }));
+
+      // 임시 저장 데이터 삭제
+      clearTempForm();
+      setHasTempData(false);
+      setTempSavedAt('');
+
+      toast({
+        title: '자격취득 신고가 완료되었습니다.',
+      });
+
+      // 확인 다이얼로그 닫기
+      setConfirmDialogOpen(false);
+
+      // 상세 화면으로 이동
+      window.history.pushState({}, '', `/hr/insurance/acquisition/detail/${completedReport.id}`);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+      toast({
+        title: '신고에 실패했습니다.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // 신고내역 조회
@@ -783,199 +937,95 @@ export function InsuranceAcquisition(): JSX.Element {
     setSelectedPeriod('');
   };
 
+  const handleBack = (): void => {
+    window.history.pushState({}, '', '/hr/insurance/acquisition');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
+
   return (
-    <div className={`space-y-6 ${!isAtBottom ? 'pb-24' : 'pb-16'}`}>
+    <div className="flex flex-col h-[calc(100vh-3rem)]">
       <PageHeader
         title="자격취득신고"
-        showBackButton={false}
+        showBackButton={true}
+        onBack={handleBack}
         actions={
-          <Button variant="outline" onClick={handleOpenHistoryDialog}>
-            신고내역 조회
+          <Button variant="outline" size="sm" onClick={handleOpenWorkplaceDialog}>
+            사업장 정보 수정
           </Button>
         }
       />
 
-      {/* 사업장 정보 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>사업장 정보</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="managementNumber">사업장관리번호 *</Label>
-              <Input
-                id="managementNumber"
-                value={workplace.managementNumber}
-                onChange={(e) => handleWorkplaceChange('managementNumber', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
-                placeholder="예: 1234567890"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="workplaceName">명칭 *</Label>
-              <Input
-                id="workplaceName"
-                value={workplace.name}
-                onChange={(e) => handleWorkplaceChange('name', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="unitName">단위사업장 명칭</Label>
-              <Input
-                id="unitName"
-                value={workplace.unitName}
-                onChange={(e) => handleWorkplaceChange('unitName', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="branchName">영업소 명칭</Label>
-              <Input
-                id="branchName"
-                value={workplace.branchName}
-                onChange={(e) => handleWorkplaceChange('branchName', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
-              />
-            </div>
+      {/* 직장가입자 */}
+      <div className="flex gap-6 flex-1 min-h-0 pb-20">
+        {/* 좌측 패널 - 직원 목록 */}
+        <div className="w-72 bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col">
+          <div className="p-4 border-b flex items-center justify-between">
+            <span className="text-sm font-medium">{employees.length}명</span>
+            <Button size="sm" onClick={handleAddEmployee}>
+              <Plus className="h-4 w-4 mr-1" />
+              추가하기
+            </Button>
           </div>
-
-          <div className="grid grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="postalCode">우편번호 *</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="postalCode"
-                  value={workplace.postalCode}
-                  readOnly
-                  placeholder="우편번호"
-                />
-                <Button type="button" onClick={() => setAddressDialogOpen(true)}>
-                  주소 검색
-                </Button>
+          <div className="flex-1 overflow-auto">
+            {employees.map((emp, idx) => (
+              <div
+                key={idx}
+                className={`flex items-center justify-between px-4 py-3 cursor-pointer border-b hover:bg-gray-50 ${selectedEmployeeIndex === idx ? 'bg-blue-50' : ''}`}
+                onClick={() => setSelectedEmployeeIndex(idx)}
+              >
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  {showErrors && !isEmployeeValid(emp) && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                  )}
+                  <div className="text-sm min-w-0 truncate">
+                    <span className="font-medium">{emp.name || '(미입력)'}</span>
+                    {emp.employeeNumber && (
+                      <span className="text-gray-500 ml-1">({emp.employeeNumber})</span>
+                    )}
+                  </div>
+                </div>
+                {idx > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 ml-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSingleEmployee(idx);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 text-gray-400" />
+                  </Button>
+                )}
               </div>
-            </div>
-            <div className="space-y-2 col-span-2">
-              <Label htmlFor="address">주소 *</Label>
-              <Input
-                id="address"
-                value={workplace.address}
-                readOnly
-                placeholder="주소"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="addressDetail">상세주소 *</Label>
-              <Input
-                id="addressDetail"
-                value={workplace.addressDetail}
-                onChange={(e) => handleWorkplaceChange('addressDetail', e.target.value)}
-                onCompositionStart={() => setIsComposing(true)}
-                onCompositionEnd={() => setIsComposing(false)}
-                placeholder="상세주소를 입력하세요"
-              />
-            </div>
+            ))}
           </div>
+        </div>
 
-          <div className="grid grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phoneNumber">전화번호 *</Label>
-              <Input
-                id="phoneNumber"
-                value={workplace.phoneNumber}
-                onChange={(e) => {
-                  // 숫자, +, (, ), - 만 허용
-                  const value = e.target.value;
-                  if (/^[0-9+()-]*$/.test(value)) {
-                    handleWorkplaceChange('phoneNumber', value);
-                  }
-                }}
-                placeholder="예: 02-1234-5678"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="faxNumber">FAX번호</Label>
-              <Input
-                id="faxNumber"
-                value={workplace.faxNumber}
-                onChange={(e) => {
-                  // 숫자, - 만 허용
-                  const value = e.target.value;
-                  if (/^[0-9-]*$/.test(value)) {
-                    handleWorkplaceChange('faxNumber', value);
-                  }
-                }}
-                placeholder="예: 02-1234-5678"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 직원 목록 */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>직장가입자 목록</CardTitle>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => setEmployees([...employees, createDefaultEmployee()])}>
-                <Plus className="h-4 w-4 mr-1" />
-                추가하기
-              </Button>
-              {selectedEmployeeIds.size > 0 && (
-                <Button variant="destructive" size="sm" onClick={handleDeleteEmployees}>
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  선택 삭제 ({selectedEmployeeIds.size})
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {employees.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              직원을 추가하세요.
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {employees.map((employee, index) => (
-                <Card key={index} className="border-2">
-                  <CardHeader className="bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div className="font-semibold">
-                        직원{index + 1}
-                      </div>
-                      {index > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteSingleEmployee(index)}
-                          className="h-8 w-8"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-6 space-y-6">
+        {/* 우측 패널 - 선택된 직원 폼 */}
+        <div className="flex-1 flex flex-col min-h-0">
+          {employees[selectedEmployeeIndex] !== undefined && (() => {
+            const index = selectedEmployeeIndex;
+            const employee = employees[index]!;
+            return (
+              <Card className="flex-1 flex flex-col overflow-hidden">
+                <CardContent className="pt-6 space-y-6 overflow-auto flex-1">
                     {/* 기본 정보 */}
                     <div>
                       <h4 className="font-medium mb-3">기본 정보</h4>
                       <div className="grid grid-cols-4 gap-4">
                         <div className="space-y-2">
                           <Label>성명 *</Label>
-                          <EmployeeCombobox
-                            value={employee.employeeId}
-                            onChange={(selectedEmployee) => handleSelectEmployeeFromCombobox(index, selectedEmployee)}
-                            excludeIds={employees
-                              .filter((e, i) => i !== index && e.employeeId)
-                              .map((e) => e.employeeId as string)}
-                          />
+                          <div className={showErrors && !employee.employeeId ? 'rounded-md ring-1 ring-red-500' : ''}>
+                            <EmployeeCombobox
+                              value={employee.employeeId}
+                              onChange={(selectedEmployee) => handleSelectEmployeeFromCombobox(index, selectedEmployee)}
+                              excludeIds={employees
+                                .filter((e, i) => i !== index && e.employeeId)
+                                .map((e) => e.employeeId as string)}
+                              activeOnly={true}
+                            />
+                          </div>
                         </div>
                         <div className="space-y-2">
                           <Label>주민등록번호/외국인등록번호 *</Label>
@@ -983,6 +1033,7 @@ export function InsuranceAcquisition(): JSX.Element {
                             value={employee.residentNumber}
                             onChange={(e) => handleResidentNumberChange(index, e.target.value)}
                             placeholder="예: 900101-1234567"
+                            className={showErrors && !employee.residentNumber ? 'border-red-500' : ''}
                           />
                         </div>
                         <div className="space-y-2">
@@ -993,7 +1044,7 @@ export function InsuranceAcquisition(): JSX.Element {
                               handleEmployeeChange(index, 'nationality', value)
                             }
                           >
-                            <SelectTrigger>
+                            <SelectTrigger className={showErrors && !employee.nationality ? 'border-red-500' : ''}>
                               <SelectValue placeholder="국적을 선택하세요" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1014,7 +1065,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                 handleEmployeeChange(index, 'residenceStatus', value)
                               }
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className={showErrors && !employee.residenceStatus ? 'border-red-500' : ''}>
                                 <SelectValue placeholder="선택" />
                               </SelectTrigger>
                               <SelectContent>
@@ -1046,6 +1097,7 @@ export function InsuranceAcquisition(): JSX.Element {
                               }
                             }}
                             placeholder="0"
+                            className={showErrors && (!employee.monthlySalary || employee.monthlySalary === 0) ? 'border-red-500' : ''}
                           />
                         </div>
                         <div className="space-y-2">
@@ -1055,6 +1107,7 @@ export function InsuranceAcquisition(): JSX.Element {
                             value={employee.acquisitionDate}
                             onChange={(e) => handleDateChange(index, 'acquisitionDate', e.target.value)}
                             max="2100-12-31"
+                            className={showErrors && !employee.acquisitionDate ? 'border-red-500' : ''}
                           />
                         </div>
                         <div className="flex items-center pt-7">
@@ -1143,7 +1196,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                 )
                               }
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className={showErrors && !employee.pensionAcquisitionCode ? 'border-red-500' : ''}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1163,7 +1216,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                 handleEmployeeChange(index, 'specialOccupationCode', value)
                               }
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className={showErrors && !employee.specialOccupationCode ? 'border-red-500' : ''}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1187,7 +1240,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                 )
                               }
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className={showErrors && !employee.occupationalPensionCode ? 'border-red-500' : ''}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1231,7 +1284,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                 handleEmployeeChange(index, 'healthAcquisitionCode', value)
                               }
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className={showErrors && !employee.healthAcquisitionCode ? 'border-red-500' : ''}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1251,7 +1304,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                 handleEmployeeChange(index, 'premiumReductionCode', value)
                               }
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className={showErrors && !employee.premiumReductionCode ? 'border-red-500' : ''}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1304,6 +1357,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                 onCompositionEnd={() => setIsComposing(false)}
                                 placeholder="공무원·교직원인 경우 입력"
                                 maxLength={30}
+                                className={showErrors && !employee.accountName ? 'border-red-500' : ''}
                               />
                             </div>
                             <div className="space-y-2">
@@ -1315,6 +1369,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                 }
                                 placeholder="공무원·교직원인 경우 입력"
                                 maxLength={6}
+                                className={showErrors && !employee.accountCode ? 'border-red-500' : ''}
                               />
                             </div>
                             <div className="space-y-2">
@@ -1328,6 +1383,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                 onCompositionEnd={() => setIsComposing(false)}
                                 placeholder="공무원·교직원인 경우 입력"
                                 maxLength={30}
+                                className={showErrors && !employee.jobName ? 'border-red-500' : ''}
                               />
                             </div>
                             <div className="space-y-2">
@@ -1339,6 +1395,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                 }
                                 placeholder="공무원·교직원인 경우 입력"
                                 maxLength={6}
+                                className={showErrors && !employee.jobCode ? 'border-red-500' : ''}
                               />
                             </div>
                           </div>
@@ -1386,7 +1443,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                           handleDependentChange(index, depIdx, 'relationship', value)
                                         }
                                       >
-                                        <SelectTrigger>
+                                        <SelectTrigger className={showErrors && !dep.relationship ? 'border-red-500' : ''}>
                                           <SelectValue placeholder="선택" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -1408,6 +1465,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                         onCompositionStart={() => setIsComposing(true)}
                                         onCompositionEnd={() => setIsComposing(false)}
                                         maxLength={30}
+                                        className={showErrors && !dep.name ? 'border-red-500' : ''}
                                       />
                                     </div>
                                     <div className="space-y-2">
@@ -1418,6 +1476,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                           handleDependentResidentNumberChange(index, depIdx, e.target.value)
                                         }
                                         placeholder="예: 900101-1234567"
+                                        className={showErrors && !dep.residentNumber ? 'border-red-500' : ''}
                                       />
                                     </div>
                                   </div>
@@ -1456,7 +1515,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                             )
                                           }
                                         >
-                                          <SelectTrigger>
+                                          <SelectTrigger className={showErrors && !dep.disabilityTypeCode ? 'border-red-500' : ''}>
                                             <SelectValue placeholder="선택" />
                                           </SelectTrigger>
                                           <SelectContent>
@@ -1482,6 +1541,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                             )
                                           }
                                           max="2100-12-31"
+                                          className={showErrors && !dep.registrationDate ? 'border-red-500' : ''}
                                         />
                                       </div>
                                     </div>
@@ -1511,7 +1571,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                             handleDependentChange(index, depIdx, 'nationality', value)
                                           }
                                         >
-                                          <SelectTrigger>
+                                          <SelectTrigger className={showErrors && !dep.nationality ? 'border-red-500' : ''}>
                                             <SelectValue placeholder="국적을 선택하세요" />
                                           </SelectTrigger>
                                           <SelectContent>
@@ -1536,7 +1596,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                             )
                                           }
                                         >
-                                          <SelectTrigger>
+                                          <SelectTrigger className={showErrors && !dep.residenceStatus ? 'border-red-500' : ''}>
                                             <SelectValue placeholder="선택" />
                                           </SelectTrigger>
                                           <SelectContent>
@@ -1561,6 +1621,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                             )
                                           }
                                           maxLength={30}
+                                          className={showErrors && !dep.residencePeriod ? 'border-red-500' : ''}
                                         />
                                       </div>
                                     </div>
@@ -1581,30 +1642,12 @@ export function InsuranceAcquisition(): JSX.Element {
                         <div className="grid grid-cols-4 gap-4">
                           <div className="space-y-2">
                             <Label>직종부호 *</Label>
-                            <Select
-                              value={employee.employmentJobCode}
-                              onValueChange={(value) =>
-                                handleEmployeeChange(index, 'employmentJobCode', value)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="선택" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {EMPLOYMENT_JOB_CODES.map((category) => (
-                                  <div key={category.category}>
-                                    <div className="px-2 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100">
-                                      {category.category}
-                                    </div>
-                                    {category.codes.map((code) => (
-                                      <SelectItem key={code.value} value={code.value}>
-                                        {code.label}
-                                      </SelectItem>
-                                    ))}
-                                  </div>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <div className={showErrors && !employee.employmentJobCode ? 'rounded-md ring-1 ring-red-500' : ''}>
+                              <JobCodeCombobox
+                                value={employee.employmentJobCode}
+                                onChange={(value) => handleEmployeeChange(index, 'employmentJobCode', value)}
+                              />
+                            </div>
                           </div>
                           <div className="space-y-2">
                             <Label>1주 소정근로시간 *</Label>
@@ -1620,6 +1663,7 @@ export function InsuranceAcquisition(): JSX.Element {
                                   value < 1 ? 1 : value
                                 );
                               }}
+                              className={showErrors && (!employee.weeklyWorkHours || employee.weeklyWorkHours === 0) ? 'border-red-500' : ''}
                             />
                           </div>
                           <div className="space-y-2">
@@ -1688,42 +1732,24 @@ export function InsuranceAcquisition(): JSX.Element {
                                 value={employee.contractEndDate}
                                 onChange={(e) => handleMonthChange(index, 'contractEndDate', e.target.value)}
                                 max="2100-12"
+                                className={showErrors && !employee.contractEndDate ? 'border-red-500' : ''}
                               />
                             </div>
                           )}
                         </div>
                       </div>
                     )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </CardContent>
+              </Card>
+            );
+          })()}
+        </div>
+      </div>
 
       {/* 하단 버튼 영역 */}
       <div className="fixed bottom-0 left-[305px] right-0 z-10">
         <div className="mx-auto max-w-[1500px] px-6">
-          <div className={`bg-white pt-4 pb-6 px-6 flex justify-between items-center ${!isAtBottom ? 'border-t shadow-[0_-1px_3px_0_rgba(0,0,0,0.1)]' : ''}`}>
-          <div className="flex gap-2">
-            {hasTempData && (
-              <>
-                <Button variant="outline" onClick={handleLoadTempData}>
-                  임시저장 불러오기
-                </Button>
-                <Button variant="outline" onClick={handleClearTempData}>
-                  임시저장 삭제
-                </Button>
-                {tempSavedAt && (
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Info className="h-4 w-4 mr-1" />
-                    마지막 저장: {format(new Date(tempSavedAt), 'yyyy-MM-dd HH:mm:ss')}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          <div className={`bg-white pt-4 pb-6 px-6 flex justify-end items-center ${!isAtBottom ? 'border-t shadow-[0_-1px_3px_0_rgba(0,0,0,0.1)]' : ''}`}>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleTempSave}>
               임시 저장
@@ -1731,7 +1757,7 @@ export function InsuranceAcquisition(): JSX.Element {
             <Button variant="outline" onClick={() => {}}>
               미리보기
             </Button>
-            <Button variant="default" onClick={handleSubmit} disabled={!isFormValid}>신고하기</Button>
+            <Button variant="default" onClick={handleSubmit}>신고하기</Button>
           </div>
           </div>
         </div>
@@ -1961,7 +1987,126 @@ export function InsuranceAcquisition(): JSX.Element {
         </DialogContent>
       </Dialog>
 
-      {/* 주소 검색 다이얼로그 */}
+      {/* 사업장 정보 수정 다이얼로그 */}
+      <Dialog open={workplaceDialogOpen} onOpenChange={setWorkplaceDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>사업장 정보 수정</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dialogManagementNumber">사업장관리번호 *</Label>
+                <Input
+                  id="dialogManagementNumber"
+                  value={workplaceEditData.managementNumber}
+                  onChange={(e) => handleWorkplaceEditChange('managementNumber', e.target.value)}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
+                  placeholder="예: 1234567890"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dialogWorkplaceName">명칭 *</Label>
+                <Input
+                  id="dialogWorkplaceName"
+                  value={workplaceEditData.name}
+                  onChange={(e) => handleWorkplaceEditChange('name', e.target.value)}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dialogUnitName">단위사업장 명칭</Label>
+                <Input
+                  id="dialogUnitName"
+                  value={workplaceEditData.unitName}
+                  onChange={(e) => handleWorkplaceEditChange('unitName', e.target.value)}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dialogBranchName">영업소 명칭</Label>
+                <Input
+                  id="dialogBranchName"
+                  value={workplaceEditData.branchName}
+                  onChange={(e) => handleWorkplaceEditChange('branchName', e.target.value)}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dialogPostalCode">우편번호 *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="dialogPostalCode"
+                    value={workplaceEditData.postalCode}
+                    readOnly
+                    placeholder="우편번호"
+                  />
+                  <Button type="button" onClick={() => setAddressDialogOpen(true)}>
+                    주소 검색
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dialogAddress">주소 *</Label>
+                <Input
+                  id="dialogAddress"
+                  value={workplaceEditData.address}
+                  readOnly
+                  placeholder="주소"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="dialogAddressDetail">상세주소 *</Label>
+                <Input
+                  id="dialogAddressDetail"
+                  value={workplaceEditData.addressDetail}
+                  onChange={(e) => handleWorkplaceEditChange('addressDetail', e.target.value)}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={() => setIsComposing(false)}
+                  placeholder="상세주소를 입력하세요"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="dialogPhoneNumber">전화번호 *</Label>
+                <Input
+                  id="dialogPhoneNumber"
+                  value={workplaceEditData.phoneNumber}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (/^[0-9+()-]*$/.test(value)) {
+                      handleWorkplaceEditChange('phoneNumber', value);
+                    }
+                  }}
+                  placeholder="예: 02-1234-5678"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setWorkplaceDialogOpen(false)}>
+              취소
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleWorkplaceEditSave}
+              disabled={!isWorkplaceEditValid}
+            >
+              저장
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* 주소 검색 다이얼로그 */}
       <AddressSearchDialog
         open={addressDialogOpen}
@@ -1976,6 +2121,41 @@ export function InsuranceAcquisition(): JSX.Element {
             <DialogTitle>자격취득 신고 확인</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* 사업장 정보 */}
+            <div>
+              <p className="text-sm font-medium mb-2">사업장 정보</p>
+              <div className="bg-gray-50 p-3 rounded-md space-y-1">
+                <div className="flex gap-2 text-sm">
+                  <span className="text-gray-500 w-24 shrink-0">사업장관리번호</span>
+                  <span className="text-gray-900">{workplace.managementNumber || '-'}</span>
+                </div>
+                <div className="flex gap-2 text-sm">
+                  <span className="text-gray-500 w-24 shrink-0">명칭</span>
+                  <span className="text-gray-900">{workplace.name || '-'}</span>
+                </div>
+                {workplace.unitName && (
+                  <div className="flex gap-2 text-sm">
+                    <span className="text-gray-500 w-24 shrink-0">단위사업소</span>
+                    <span className="text-gray-900">{workplace.unitName}</span>
+                  </div>
+                )}
+                {workplace.branchName && (
+                  <div className="flex gap-2 text-sm">
+                    <span className="text-gray-500 w-24 shrink-0">영업소</span>
+                    <span className="text-gray-900">{workplace.branchName}</span>
+                  </div>
+                )}
+                <div className="flex gap-2 text-sm">
+                  <span className="text-gray-500 w-24 shrink-0">주소</span>
+                  <span className="text-gray-900">{workplace.address ? `${workplace.address} ${workplace.addressDetail}`.trim() : '-'}</span>
+                </div>
+                <div className="flex gap-2 text-sm">
+                  <span className="text-gray-500 w-24 shrink-0">전화번호</span>
+                  <span className="text-gray-900">{workplace.phoneNumber || '-'}</span>
+                </div>
+              </div>
+            </div>
+
             {/* 직장가입자 목록 */}
             <div>
               <p className="text-sm font-medium mb-2">신고 대상 ({employees.length}명)</p>
@@ -1988,45 +2168,57 @@ export function InsuranceAcquisition(): JSX.Element {
               </div>
             </div>
 
-            {/* 사업장 정보 */}
-            <div className="space-y-3">
-              <div className="text-sm">
-                <span className="text-gray-600">사업장: </span>
-                <span className="font-medium">{getShortAddress(workplace.address || '-')}</span>
-              </div>
+            {/* 사업장 FAX 번호 */}
+            <div className="space-y-2">
+              <Label htmlFor="workplaceFaxNumber" className="text-sm font-medium">
+                사업장 FAX 번호
+              </Label>
+              <Input
+                id="workplaceFaxNumber"
+                value={workplaceFaxNumber}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // 숫자, -, (, ) 만 허용
+                  if (/^[0-9()-]*$/.test(value)) {
+                    setWorkplaceFaxNumber(value);
+                  }
+                }}
+                placeholder="예: 02-1234-5678"
+                className="text-sm"
+              />
+            </div>
 
-              {/* 공단 FAX 번호 */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="faxNumber" className="text-sm font-medium">
-                    공단 FAX 번호
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open('https://www.4insure.or.kr/pbiz/ntcn/selectInstBrofSrchView.do', '_blank')}
-                  >
-                    FAX번호 찾기
-                  </Button>
-                </div>
-                <Input
-                  id="faxNumber"
-                  value={faxNumber}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    // 숫자, -, (, ) 만 허용
-                    if (/^[0-9()-]*$/.test(value)) {
-                      setFaxNumber(value);
-                    }
-                  }}
-                  placeholder="예: 02-1234-5678"
-                  className="text-sm"
-                />
-                <p className="text-xs text-gray-600">
-                  사업장 주소에 맞춰 공단 FAX 번호를 입력해주세요. 1개의 공단 FAX 번호만 입력해주시면 됩니다. (신고하려는 보험에 속하는 공단이어야 함)
-                </p>
+            {/* 공단 FAX 번호 */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="faxNumber" className="text-sm font-medium">
+                  공단 FAX 번호
+                </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open('https://www.4insure.or.kr/pbiz/ntcn/selectInstBrofSrchView.do', '_blank')}
+                >
+                  FAX번호 찾기
+                </Button>
               </div>
+              <Input
+                id="faxNumber"
+                value={faxNumber}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // 숫자, -, (, ) 만 허용
+                  if (/^[0-9()-]*$/.test(value)) {
+                    setFaxNumber(value);
+                  }
+                }}
+                placeholder="예: 02-1234-5678"
+                className="text-sm"
+              />
+              <p className="text-xs text-gray-600">
+                사업장 주소에 맞춰 공단 FAX 번호를 입력해주세요. 1개의 공단 FAX 번호만 입력해주시면 됩니다. (신고하려는 보험에 속하는 공단이어야 함)
+              </p>
             </div>
           </div>
 
@@ -2035,7 +2227,11 @@ export function InsuranceAcquisition(): JSX.Element {
             <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
               취소
             </Button>
-            <Button variant="default" onClick={handleConfirmSubmit}>
+            <Button
+              variant="default"
+              onClick={handleConfirmSubmit}
+              disabled={!workplaceFaxNumber || !faxNumber}
+            >
               확인
             </Button>
           </div>

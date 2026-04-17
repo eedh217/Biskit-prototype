@@ -1,3 +1,12 @@
+// 급여 템플릿 항목
+export interface PayrollTemplateItem {
+  itemId: string; // "taxable-2026-1", "non-taxable-2026-P01"
+  itemCode: string; // "급여", "P01"
+  itemName: string; // "급여", "식대"
+  amount: number; // 3000000
+  category: 'taxable' | 'non-taxable';
+}
+
 export interface Employee {
   id: string;
   employeeNumber: string; // 사번
@@ -23,9 +32,8 @@ export interface Employee {
   position: string | null; // 직급 ID (JobLevel ID 참조)
   employmentTypeId: string | null; // 근로형태 ID (EmploymentType ID 참조)
   isDepartmentHead: boolean; // 부서장 여부
-  salaryType: '연봉' | '시급' | null; // 계약급여 타입
-  salaryAmount: number | null; // 계약급여 금액
-  mealAllowance: number | null; // 식대 (연봉: 월, 시급: 일)
+  annualSalary: number | null; // 연봉 (계약 금액)
+  payrollTemplate: PayrollTemplateItem[]; // 급여 템플릿 항목
   bankName: string | null; // 은행명
   accountHolder: string | null; // 예금주
   accountNumber: string | null; // 계좌번호
@@ -62,9 +70,8 @@ export interface CreateEmployeeDto {
   position?: string | null;
   employmentTypeId?: string | null;
   isDepartmentHead?: boolean;
-  salaryType?: '연봉' | '시급' | null;
-  salaryAmount?: number | null;
-  mealAllowance?: number | null;
+  annualSalary?: number | null;
+  payrollTemplate?: PayrollTemplateItem[];
   bankName?: string | null;
   accountHolder?: string | null;
   accountNumber?: string | null;
@@ -94,9 +101,8 @@ export interface UpdateEmployeeDto {
   position?: string | null;
   employmentTypeId?: string | null;
   isDepartmentHead?: boolean;
-  salaryType?: '연봉' | '시급' | null;
-  salaryAmount?: number | null;
-  mealAllowance?: number | null;
+  annualSalary?: number | null;
+  payrollTemplate?: PayrollTemplateItem[];
   bankName?: string | null;
   accountHolder?: string | null;
   accountNumber?: string | null;

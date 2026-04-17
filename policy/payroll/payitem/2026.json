@@ -1,0 +1,599 @@
+{
+  "year": 2026,
+  "taxableItems": [
+    {
+      "id": "taxable-2026-1",
+      "name": "급여",
+      "year": 2026,
+      "category": "taxable"
+    },
+    {
+      "id": "taxable-2026-2",
+      "name": "상여",
+      "year": 2026,
+      "category": "taxable"
+    },
+    {
+      "id": "taxable-2026-3",
+      "name": "인정상여",
+      "year": 2026,
+      "category": "taxable"
+    },
+    {
+      "id": "taxable-2026-4",
+      "name": "주식매수선택권 행사이익",
+      "year": 2026,
+      "category": "taxable"
+    },
+    {
+      "id": "taxable-2026-5",
+      "name": "우리사주조합 인출금",
+      "year": 2026,
+      "category": "taxable"
+    },
+    {
+      "id": "taxable-2026-6",
+      "name": "임원 퇴직소득금액 한도초과액",
+      "year": 2026,
+      "category": "taxable"
+    },
+    {
+      "id": "taxable-2026-7",
+      "name": "직무발명보상금 한도초과액",
+      "year": 2026,
+      "category": "taxable"
+    }
+  ],
+  "nonTaxableItems": [
+    {
+      "id": "non-taxable-2026-A01",
+      "code": "A01",
+      "name": "병사 급여",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-B01",
+      "code": "B01",
+      "name": "동원직장급여",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-C01",
+      "code": "C01",
+      "name": "요양급여",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-D01",
+      "code": "D01",
+      "name": "요양보상금",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-E01",
+      "code": "E01",
+      "name": "육아휴직급여",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-E02",
+      "code": "E02",
+      "name": "공무원 육아휴직수당",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-E10",
+      "code": "E10",
+      "name": "국민연금 반환·사망일시금",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-F01",
+      "code": "F01",
+      "name": "공무상요양비",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-G01",
+      "code": "G01",
+      "name": "학자금",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H02",
+      "code": "H02",
+      "name": "일직료·숙직료",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H03",
+      "code": "H03",
+      "name": "자가운전보조금",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H04",
+      "code": "H04",
+      "name": "제복·피복",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H05",
+      "code": "H05",
+      "name": "경호·승선수당",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H06",
+      "code": "H06",
+      "name": "연구보조비-육아 등",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H07",
+      "code": "H07",
+      "name": "연구보조비고등",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H08",
+      "code": "H08",
+      "name": "연구보조비-특별법",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H09",
+      "code": "H09",
+      "name": "연구보조비(H09)",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H10",
+      "code": "H10",
+      "name": "연구보조비(H10)",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H11",
+      "code": "H11",
+      "name": "취재수당",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H12",
+      "code": "H12",
+      "name": "벽지수당",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H13",
+      "code": "H13",
+      "name": "재해급여",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H14",
+      "code": "H14",
+      "name": "보육교사 근무환경개선비",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H15",
+      "code": "H15",
+      "name": "사립유치원 교사 인건비",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H16",
+      "code": "H16",
+      "name": "이주수당",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-H17",
+      "code": "H17",
+      "name": "종교활동비",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-I01",
+      "code": "I01",
+      "name": "외국정부·국제기관 급여",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-J01",
+      "code": "J01",
+      "name": "보훈급여 등",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-J10",
+      "code": "J10",
+      "name": "전직대통령 연금",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-K01",
+      "code": "K01",
+      "name": "외국주둔군인급여",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-L01",
+      "code": "L01",
+      "name": "종군군인전사급여",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-M01",
+      "code": "M01",
+      "name": "국외근로 100만원",
+      "monthlyLimit": "월 1,000,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-M04",
+      "code": "M04",
+      "name": "국외근로 500만원",
+      "monthlyLimit": "월 5,000,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-M03",
+      "code": "M03",
+      "name": "국외근로(M03)",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-N01",
+      "code": "N01",
+      "name": "건강보험등 회사부담분",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-O01",
+      "code": "O01",
+      "name": "연장근로수당",
+      "monthlyLimit": null,
+      "yearlyLimit": "연 2,400,000원",
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-P01",
+      "code": "P01",
+      "name": "식대",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-P02",
+      "code": "P02",
+      "name": "현물 급식",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-Q02",
+      "code": "Q02",
+      "name": "보육수당",
+      "monthlyLimit": "월 200,000원",
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-Q03",
+      "code": "Q03",
+      "name": "출산지원금(1회)",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-Q04",
+      "code": "Q04",
+      "name": "출산지원금(2회)",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-R01",
+      "code": "R01",
+      "name": "국군포로보수",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-R10",
+      "code": "R10",
+      "name": "근로장학금",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-R11",
+      "code": "R11",
+      "name": "직무발명보상금",
+      "monthlyLimit": null,
+      "yearlyLimit": "연 7,000,000원",
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-S01",
+      "code": "S01",
+      "name": "주식매수선택권",
+      "monthlyLimit": null,
+      "yearlyLimit": "연 30,000,000원",
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-U01",
+      "code": "U01",
+      "name": "주식매수선택권(벤처기업)",
+      "monthlyLimit": null,
+      "yearlyLimit": "연 200,000,000원\n(누적한도 500,000,000원)",
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-V01",
+      "code": "V01",
+      "name": "사택제공이익",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-V02",
+      "code": "V02",
+      "name": "주택자금대여이익",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-V03",
+      "code": "V03",
+      "name": "단체보장성보험",
+      "monthlyLimit": null,
+      "yearlyLimit": "연 700,000원",
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-V04",
+      "code": "V04",
+      "name": "상금·보상(공무원)",
+      "monthlyLimit": null,
+      "yearlyLimit": "연 2,400,000원",
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-V05",
+      "code": "V05",
+      "name": "위탁보육료",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": false,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-W01",
+      "code": "W01",
+      "name": "종업원 할인금액",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-Y02",
+      "code": "Y02",
+      "name": "우리사주조합 인출금(50%)",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-Y03",
+      "code": "Y03",
+      "name": "우리사주조합 인출금(75%)",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-Y04",
+      "code": "Y04",
+      "name": "우리사주조합 인출금(100%)",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    },
+    {
+      "id": "non-taxable-2026-Y22",
+      "code": "Y22",
+      "name": "전공의 수당",
+      "monthlyLimit": null,
+      "yearlyLimit": null,
+      "includeInStatement": true,
+      "year": 2026,
+      "category": "non-taxable"
+    }
+  ]
+}

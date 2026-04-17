@@ -7,8 +7,8 @@ export type HistoryCategory = 'personal' | 'organization' | 'salary';
 export interface EmployeeHistoryChange {
   fieldName: string; // 필드명 (예: "기본급", "부서", "직급")
   fieldKey: string; // 실제 필드 키 (예: "salaryAmount", "departmentId")
-  oldValue: string | number | null; // 변경 전 값
-  newValue: string | number | null; // 변경 후 값
+  oldValue: unknown; // 변경 전 값 (any type 지원)
+  newValue: unknown; // 변경 후 값 (any type 지원)
   displayOldValue: string; // 화면에 표시할 변경 전 값
   displayNewValue: string; // 화면에 표시할 변경 후 값
 }

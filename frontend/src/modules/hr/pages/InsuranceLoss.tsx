@@ -118,7 +118,20 @@ export function InsuranceLoss(): JSX.Element {
 
   // 신고 확인 Dialog
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [workplaceFaxNumber, setWorkplaceFaxNumber] = useState('');
   const [faxNumber, setFaxNumber] = useState('');
+
+  // FAX 정보 로드 (다이얼로그 열릴 때)
+  useEffect(() => {
+    if (confirmDialogOpen) {
+      const savedFaxInfo = localStorage.getItem('biskit_insurance_fax_info');
+      if (savedFaxInfo) {
+        const faxInfo = JSON.parse(savedFaxInfo);
+        setWorkplaceFaxNumber(faxInfo.workplaceFaxNumber || '');
+        setFaxNumber(faxInfo.agencyFaxNumber || '');
+      }
+    }
+  }, [confirmDialogOpen]);
 
   // 스크롤 위치 감지 (하단 버튼 영역 그림자 제어)
   const [isAtBottom, setIsAtBottom] = useState(false);
@@ -519,6 +532,12 @@ export function InsuranceLoss(): JSX.Element {
 
     // 사업장 정보 저장
     saveWorkplaceInfo(workplace);
+
+    // FAX 정보 저장
+    localStorage.setItem('biskit_insurance_fax_info', JSON.stringify({
+      workplaceFaxNumber,
+      agencyFaxNumber: faxNumber,
+    }));
 
     // 임시 저장 데이터 삭제
     localStorage.removeItem(LOSS_TEMP_STORAGE_KEY);
@@ -1535,11 +1554,25 @@ export function InsuranceLoss(): JSX.Element {
               </div>
             </div>
 
-            {/* 사업장 정보 */}
+            {/* 사업장 FAX 번호 */}
             <div className="space-y-3">
-              <div className="text-sm">
-                <span className="text-gray-600">사업장: </span>
-                <span className="font-medium">{getShortAddress(workplace.address || '-')}</span>
+              <div className="space-y-2">
+                <Label htmlFor="workplaceFaxNumber" className="text-sm font-medium">
+                  사업장 FAX 번호
+                </Label>
+                <Input
+                  id="workplaceFaxNumber"
+                  value={workplaceFaxNumber}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // 숫자, -, (, ) 만 허용
+                    if (/^[0-9()-]*$/.test(value)) {
+                      setWorkplaceFaxNumber(value);
+                    }
+                  }}
+                  placeholder="예: 02-1234-5678"
+                  className="text-sm"
+                />
               </div>
 
               {/* 공단 FAX 번호 */}
@@ -1582,7 +1615,7 @@ export function InsuranceLoss(): JSX.Element {
             <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
               취소
             </Button>
-            <Button variant="default" onClick={handleConfirmSubmit}>
+            <Button variant="default" onClick={handleConfirmSubmit} disabled={!workplaceFaxNumber || !faxNumber}>
               확인
             </Button>
           </div>

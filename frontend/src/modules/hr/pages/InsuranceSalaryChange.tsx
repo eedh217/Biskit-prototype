@@ -103,7 +103,20 @@ export function InsuranceSalaryChange(): JSX.Element {
 
   // 신고 확인 Dialog
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [workplaceFaxNumber, setWorkplaceFaxNumber] = useState('');
   const [faxNumber, setFaxNumber] = useState('');
+
+  // FAX 정보 로드 (다이얼로그 열릴 때)
+  useEffect(() => {
+    if (confirmDialogOpen) {
+      const savedFaxInfo = localStorage.getItem('biskit_insurance_fax_info');
+      if (savedFaxInfo) {
+        const faxInfo = JSON.parse(savedFaxInfo);
+        setWorkplaceFaxNumber(faxInfo.workplaceFaxNumber || '');
+        setFaxNumber(faxInfo.agencyFaxNumber || '');
+      }
+    }
+  }, [confirmDialogOpen]);
 
   // 스크롤 위치 감지 (하단 버튼 영역 그림자 제어)
   const [isAtBottom, setIsAtBottom] = useState(false);
@@ -263,12 +276,15 @@ export function InsuranceSalaryChange(): JSX.Element {
 
     const currentMonth = format(new Date(), 'yyyy-MM');
 
-    // 월소득액 계산: 연봉이면 12로 나누기, 시급이면 0
+    // 월소득액 계산: 과세 항목 합계
     const calculateMonthlySalary = (): number => {
-      if (employee.salaryType === '연봉' && employee.salaryAmount) {
-        return Math.round(employee.salaryAmount / 12);
+      if (!employee.payrollTemplate || employee.payrollTemplate.length === 0) {
+        return 0;
       }
-      return 0;
+      const taxableTotal = employee.payrollTemplate
+        .filter((item) => item.category === 'taxable')
+        .reduce((sum, item) => sum + item.amount, 0);
+      return taxableTotal;
     };
 
     setEmployees((prev) => {
@@ -490,6 +506,12 @@ export function InsuranceSalaryChange(): JSX.Element {
 
     // 사업장 정보 저장
     saveWorkplaceInfo(workplace);
+
+    // FAX 정보 저장
+    localStorage.setItem('biskit_insurance_fax_info', JSON.stringify({
+      workplaceFaxNumber,
+      agencyFaxNumber: faxNumber,
+    }));
 
     // 임시 저장 데이터 삭제
     localStorage.removeItem(SALARY_CHANGE_TEMP_STORAGE_KEY);
@@ -1357,18 +1379,25 @@ export function InsuranceSalaryChange(): JSX.Element {
               </div>
             </div>
 
-            {/* 사업장 정보 */}
+            {/* 사업장 FAX 번호 */}
             <div className="space-y-3">
-              <div className="text-sm">
-                <span className="text-gray-600">사업장: </span>
-                <span className="font-medium">
-                  {(() => {
-                    const sharedWorkplace = loadWorkplaceInfo();
-                    return sharedWorkplace?.address
-                      ? getShortAddress(sharedWorkplace.address)
-                      : workplace.name || '-';
-                  })()}
-                </span>
+              <div className="space-y-2">
+                <Label htmlFor="workplaceFaxNumber" className="text-sm font-medium">
+                  사업장 FAX 번호
+                </Label>
+                <Input
+                  id="workplaceFaxNumber"
+                  value={workplaceFaxNumber}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // 숫자, -, (, ) 만 허용
+                    if (/^[0-9()-]*$/.test(value)) {
+                      setWorkplaceFaxNumber(value);
+                    }
+                  }}
+                  placeholder="예: 02-1234-5678"
+                  className="text-sm"
+                />
               </div>
 
               {/* 공단 FAX 번호 */}
@@ -1411,7 +1440,7 @@ export function InsuranceSalaryChange(): JSX.Element {
             <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
               취소
             </Button>
-            <Button variant="default" onClick={handleConfirmSubmit}>
+            <Button variant="default" onClick={handleConfirmSubmit} disabled={!workplaceFaxNumber || !faxNumber}>
               확인
             </Button>
           </div>

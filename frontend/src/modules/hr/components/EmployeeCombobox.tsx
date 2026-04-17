@@ -15,19 +15,21 @@ import {
   PopoverTrigger,
 } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import { Employee } from '../types/employee';
+import { Employee, getEmploymentStatus } from '../types/employee';
 import { employeeService } from '../services/employeeService';
 
 interface EmployeeComboboxProps {
   value?: string; // 선택된 직원 ID
   onChange: (employee: Employee | null) => void;
   excludeIds?: string[]; // 제외할 직원 ID 목록 (이미 선택된 직원)
+  activeOnly?: boolean; // 재직자만 표시 (기본값: false)
 }
 
 export function EmployeeCombobox({
   value,
   onChange,
   excludeIds = [],
+  activeOnly = false,
 }: EmployeeComboboxProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -38,8 +40,16 @@ export function EmployeeCombobox({
     const loadEmployees = async (): Promise<void> => {
       try {
         const response = await employeeService.getAll({ page: 1, limit: 1000 });
+        let filtered = response.data;
+
         // 제외할 ID 필터링
-        const filtered = response.data.filter((emp) => !excludeIds.includes(emp.id));
+        filtered = filtered.filter((emp) => !excludeIds.includes(emp.id));
+
+        // 재직자만 표시
+        if (activeOnly) {
+          filtered = filtered.filter((emp) => getEmploymentStatus(emp.leaveDate) === '재직중');
+        }
+
         setEmployees(filtered);
       } catch (error) {
         console.error('Failed to load employees:', error);
@@ -47,7 +57,7 @@ export function EmployeeCombobox({
     };
 
     loadEmployees();
-  }, [excludeIds]);
+  }, [excludeIds, activeOnly]);
 
   // value prop이 변경되면 선택된 직원 업데이트
   useEffect(() => {

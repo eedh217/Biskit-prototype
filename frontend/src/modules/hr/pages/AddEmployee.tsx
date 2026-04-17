@@ -13,17 +13,20 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Trash2, Plus, AlertCircle } from 'lucide-react';
 import { AddressSearchDialog } from '../components/AddressSearchDialog';
 import { employeeService } from '../services/employeeService';
 import { organizationService } from '../services/organizationService';
 import { jobLevelService } from '../services/jobLevelService';
 import { employmentTypeService } from '../services/employmentTypeService';
-import type { CreateEmployeeDto } from '../types/employee';
+import type { CreateEmployeeDto, PayrollTemplateItem } from '../types/employee';
 import type { Organization, OrganizationNode } from '../types/organization';
 import type { JobLevel } from '../types/jobLevel';
 import type { EmploymentType } from '../types/employmentType';
 import { COUNTRIES } from '@/shared/constants/countries';
 import { BANKS } from '@/shared/constants/banks';
+import { PAYROLL_ITEMS_2026 } from '@/modules/payroll/constants/payrollItems2026';
+import { PayrollItemCombobox } from '@/modules/payroll/components/PayrollItemCombobox';
 import {
   isValidDate,
   isValidResidentRegistrationNumber,
@@ -65,9 +68,8 @@ interface FormData {
   position: string;
   employmentTypeId: string;
   isDepartmentHead: boolean;
-  salaryType: '연봉' | '시급' | '';
-  salaryAmount: string;
-  mealAllowance: string;
+  annualSalary: string; // 연봉 (입력용 문자열)
+  payrollTemplate: PayrollTemplateItem[];
   bankName: string;
   accountHolder: string;
   accountNumber: string;
@@ -146,15 +148,23 @@ export function AddEmployee(): JSX.Element {
     position: '',
     employmentTypeId: '',
     isDepartmentHead: false,
-    salaryType: '연봉',
-    salaryAmount: '',
-    mealAllowance: '',
+    annualSalary: '',
+    payrollTemplate: [
+      {
+        itemId: '',
+        itemCode: '',
+        itemName: '',
+        amount: 0,
+        category: 'taxable' as const,
+      },
+    ],
     bankName: '',
     accountHolder: '',
     accountNumber: '',
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
+  const [payrollErrors, setPayrollErrors] = useState<Array<{ itemId: boolean; amount: boolean }>>([]);
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [jobLevels, setJobLevels] = useState<JobLevel[]>([]);
@@ -439,16 +449,95 @@ export function AddEmployee(): JSX.Element {
     handleChange('passportNumber', value);
   };
 
-  // 급여 금액 입력 핸들러 (양수만, 천 단위 콤마)
-  const handleSalaryAmountChange = (value: string): void => {
-    const formatted = formatNumberInput(value);
-    handleChange('salaryAmount', formatted);
+  // 급여항목 추가
+  const handleAddPayrollItem = (): void => {
+    setFormData((prev) => ({
+      ...prev,
+      payrollTemplate: [
+        ...prev.payrollTemplate,
+        {
+          itemId: '',
+          itemCode: '',
+          itemName: '',
+          amount: 0,
+          category: 'taxable' as const,
+        },
+      ],
+    }));
   };
 
-  // 식대 입력 핸들러 (양수만, 천 단위 콤마)
-  const handleMealAllowanceChange = (value: string): void => {
+  // 급여항목 삭제
+  const handleRemovePayrollItem = (index: number): void => {
+    setFormData((prev) => ({
+      ...prev,
+      payrollTemplate: prev.payrollTemplate.filter((_, i) => i !== index),
+    }));
+  };
+
+  // 급여항목 선택 변경
+  const handlePayrollItemChange = (index: number, itemId: string): void => {
+    const allItems = [
+      ...PAYROLL_ITEMS_2026.taxableItems,
+      ...PAYROLL_ITEMS_2026.nonTaxableItems,
+    ];
+    const selectedItem = allItems.find((item) => item.id === itemId);
+
+    if (selectedItem) {
+      setFormData((prev) => {
+        const newTemplate = [...prev.payrollTemplate];
+        const currentAmount = newTemplate[index]?.amount ?? 0; // 기존 금액 유지
+        newTemplate[index] = {
+          itemId: selectedItem.id,
+          itemCode: selectedItem.category === 'taxable'
+            ? selectedItem.name
+            : (selectedItem as { code: string }).code,
+          itemName: selectedItem.name,
+          amount: currentAmount,
+          category: selectedItem.category,
+        };
+        return { ...prev, payrollTemplate: newTemplate };
+      });
+    }
+  };
+
+  // 급여항목 금액 변경
+  const handlePayrollAmountChange = (index: number, value: string): void => {
     const formatted = formatNumberInput(value);
-    handleChange('mealAllowance', formatted);
+    setFormData((prev) => {
+      const newTemplate = [...prev.payrollTemplate];
+      const currentItem = newTemplate[index];
+      if (currentItem) {
+        newTemplate[index] = {
+          ...currentItem,
+          amount: parseFormattedNumber(formatted),
+        };
+      }
+      return { ...prev, payrollTemplate: newTemplate };
+    });
+  };
+
+  // 연봉 입력 핸들러
+  const handleAnnualSalaryChange = (value: string): void => {
+    const formatted = formatNumberInput(value);
+    setFormData((prev) => {
+      const numericValue = parseFormattedNumber(formatted);
+
+      // "급여" 항목 찾기
+      const salaryIndex = prev.payrollTemplate.findIndex(item => item.itemName === '급여');
+
+      // 연봉이 입력되고 "급여" 항목이 있으면 자동 계산
+      if (numericValue > 0 && salaryIndex !== -1) {
+        const monthlySalary = Math.round(numericValue / 12);
+        const newTemplate = [...prev.payrollTemplate];
+        newTemplate[salaryIndex] = {
+          ...newTemplate[salaryIndex]!,
+          amount: monthlySalary,
+        };
+        return { ...prev, annualSalary: formatted, payrollTemplate: newTemplate };
+      }
+
+      return { ...prev, annualSalary: formatted };
+    });
   };
 
   // 예금주 입력 핸들러 (특수문자 제거)
@@ -668,9 +757,45 @@ export function AddEmployee(): JSX.Element {
       }
     }
 
+    // 급여항목 유효성 검증
+    const newPayrollErrors = formData.payrollTemplate.map((item) => {
+      const errors = { itemId: false, amount: false };
+
+      // 둘 다 비어있으면 OK (빈 항목으로 무시됨)
+      if (!item.itemId && item.amount === 0) {
+        return errors;
+      }
+
+      // 급여항목만 선택하고 금액 미입력
+      if (item.itemId && item.amount === 0) {
+        errors.amount = true;
+      }
+
+      // 금액만 입력하고 급여항목 미선택
+      if (!item.itemId && item.amount > 0) {
+        errors.itemId = true;
+      }
+
+      return errors;
+    });
+
+    // 에러가 있으면 저장 중단
+    if (newPayrollErrors.some(e => e.itemId || e.amount)) {
+      setPayrollErrors(newPayrollErrors);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      // 빈 급여항목 제외 (itemId가 없는 항목은 저장하지 않음)
+      const validPayrollTemplate = formData.payrollTemplate.filter(
+        item => item.itemId && item.itemId !== ''
+      );
+
+      // 에러 상태 초기화
+      setPayrollErrors([]);
+
       const dto: CreateEmployeeDto = {
         employeeNumber: formData.employeeNumber,
         name: formData.name,
@@ -713,9 +838,8 @@ export function AddEmployee(): JSX.Element {
         position: formData.position || null,
         employmentTypeId: formData.employmentTypeId || null,
         isDepartmentHead: finalIsDepartmentHead,
-        salaryType: formData.salaryType || null,
-        salaryAmount: formData.salaryAmount ? parseFormattedNumber(formData.salaryAmount) : null,
-        mealAllowance: formData.mealAllowance ? parseFormattedNumber(formData.mealAllowance) : null,
+        annualSalary: parseFormattedNumber(formData.annualSalary) || null,
+        payrollTemplate: validPayrollTemplate,
         bankName: formData.bankName || null,
         accountHolder: formData.accountHolder || null,
         accountNumber: formData.accountNumber || null,
@@ -1210,16 +1334,18 @@ export function AddEmployee(): JSX.Element {
 
               {/* 주소 */}
               <div className="col-span-2 space-y-2">
-                <Label>
-                  주소
-                </Label>
-                <div className="flex gap-2">
-                  <Input value={formData.zipCode} readOnly placeholder="우편번호" />
-                  <Button type="button" onClick={() => setAddressDialogOpen(true)}>
-                    주소 검색
-                  </Button>
+                <Label>주소</Label>
+                <div className="grid grid-cols-2 gap-x-6">
+                  {/* 1열: 우편번호 + 주소검색 */}
+                  <div className="flex gap-2">
+                    <Input value={formData.zipCode} readOnly placeholder="우편번호" className="flex-1" />
+                    <Button type="button" onClick={() => setAddressDialogOpen(true)}>
+                      주소 검색
+                    </Button>
+                  </div>
+                  {/* 2열: 주소 */}
+                  <Input value={formData.address} readOnly placeholder="주소" />
                 </div>
-                <Input value={formData.address} readOnly placeholder="주소" />
                 <Input
                   ref={detailAddressRef}
                   value={formData.detailAddress}
@@ -1341,93 +1467,151 @@ export function AddEmployee(): JSX.Element {
             <CardTitle className="text-lg">급여정보</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-              {/* 계약급여 */}
+            <div className="space-y-4">
+              {/* 연봉 */}
               <div className="space-y-2">
-                <Label>계약급여</Label>
-                <div className="flex gap-2">
-                  <Select
-                    value={formData.salaryType}
-                    onValueChange={(value: '연봉' | '시급') => {
-                      handleChange('salaryType', value);
-                      // 급여 타입 변경 시 식대 초기화
-                      handleChange('mealAllowance', '');
-                    }}
+                <Label>연봉</Label>
+                <Input
+                  type="text"
+                  value={formData.annualSalary}
+                  onChange={(e) => handleAnnualSalaryChange(e.target.value)}
+                  placeholder="연봉을 입력하세요"
+                />
+              </div>
+
+              {/* 불일치 경고 */}
+              {(() => {
+                const annualSalaryNum = parseFormattedNumber(formData.annualSalary);
+                const salaryItem = formData.payrollTemplate.find(item => item.itemName === '급여');
+                const monthlySalary = salaryItem?.amount ?? 0;
+                const isInconsistent = annualSalaryNum > 0 && monthlySalary > 0 && (monthlySalary * 12 !== annualSalaryNum);
+
+                if (isInconsistent) {
+                  return (
+                    <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-md border border-amber-200">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <span>
+                        연봉({formatNumberInput(annualSalaryNum.toString())}원)과 월 급여({formatNumberInput(monthlySalary.toString())}원 × 12 = {formatNumberInput((monthlySalary * 12).toString())}원)가 일치하지 않습니다.
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* 급여항목 템플릿 */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>급여항목</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddPayrollItem}
                   >
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="연봉">연봉</SelectItem>
-                      <SelectItem value="시급">시급</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    value={formData.salaryAmount}
-                    onChange={(e) => handleSalaryAmountChange(e.target.value)}
-                    placeholder="금액 입력"
-                    className="flex-1"
-                  />
+                    <Plus className="h-4 w-4 mr-1" />
+                    급여항목 추가
+                  </Button>
                 </div>
+
+                {formData.payrollTemplate.length === 0 && (
+                  <div className="text-sm text-gray-500 py-4 text-center border border-dashed rounded-md">
+                    급여항목을 추가해주세요
+                  </div>
+                )}
+
+                {formData.payrollTemplate.map((item, index) => (
+                  <div key={index} className="grid grid-cols-2 gap-x-6">
+                    {/* 1열: 급여항목 선택 */}
+                    <PayrollItemCombobox
+                      value={item.itemId}
+                      onChange={(value) => {
+                        handlePayrollItemChange(index, value);
+                        // 에러 초기화
+                        if (payrollErrors[index]?.itemId) {
+                          const newErrors = [...payrollErrors];
+                          newErrors[index] = { ...newErrors[index]!, itemId: false };
+                          setPayrollErrors(newErrors);
+                        }
+                      }}
+                      error={payrollErrors[index]?.itemId}
+                    />
+
+                    {/* 2열: 금액 입력 + 삭제 버튼 */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={item.amount > 0 ? formatNumberInput(item.amount.toString()) : ''}
+                        onChange={(e) => {
+                          handlePayrollAmountChange(index, e.target.value);
+                          // 에러 초기화
+                          if (payrollErrors[index]?.amount) {
+                            const newErrors = [...payrollErrors];
+                            newErrors[index] = { ...newErrors[index]!, amount: false };
+                            setPayrollErrors(newErrors);
+                          }
+                        }}
+                        placeholder="금액 입력"
+                        className={`flex-1 ${payrollErrors[index]?.amount ? 'border-red-500' : ''}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemovePayrollItem(index)}
+                        className="h-10 w-10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* 식대 */}
-              <div className="space-y-2">
-                <Label>
-                  {formData.salaryType === '연봉'
-                    ? '식대 (월)'
-                    : formData.salaryType === '시급'
-                    ? '식대 (일)'
-                    : '식대'}
-                </Label>
-                <Input
-                  value={formData.mealAllowance}
-                  onChange={(e) => handleMealAllowanceChange(e.target.value)}
-                  placeholder="금액 입력"
-                  disabled={!formData.salaryType}
-                />
-              </div>
+              {/* 계좌정보 */}
+              <div className="pt-4 border-t">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  {/* 은행 */}
+                  <div className="space-y-2">
+                    <Label>은행</Label>
+                    <Select
+                      value={formData.bankName}
+                      onValueChange={(value) => handleChange('bankName', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="은행을 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BANKS.map((bank) => (
+                          <SelectItem key={bank.code} value={bank.name}>
+                            {bank.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              {/* 은행 */}
-              <div className="space-y-2">
-                <Label>은행</Label>
-                <Select
-                  value={formData.bankName}
-                  onValueChange={(value) => handleChange('bankName', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="은행을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BANKS.map((bank) => (
-                      <SelectItem key={bank.code} value={bank.name}>
-                        {bank.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {/* 예금주 */}
+                  <div className="space-y-2">
+                    <Label>예금주</Label>
+                    <Input
+                      value={formData.accountHolder}
+                      onChange={(e) => handleAccountHolderChange(e.target.value)}
+                      onCompositionStart={() => setIsComposing(true)}
+                      onCompositionEnd={() => setIsComposing(false)}
+                      placeholder="예금주 이름을 입력하세요"
+                    />
+                  </div>
 
-              {/* 예금주 */}
-              <div className="space-y-2">
-                <Label>예금주</Label>
-                <Input
-                  value={formData.accountHolder}
-                  onChange={(e) => handleAccountHolderChange(e.target.value)}
-                  onCompositionStart={() => setIsComposing(true)}
-                  onCompositionEnd={() => setIsComposing(false)}
-                  placeholder="예금주 이름을 입력하세요"
-                />
-              </div>
-
-              {/* 계좌번호 */}
-              <div className="col-span-2 space-y-2">
-                <Label>계좌번호</Label>
-                <Input
-                  value={formData.accountNumber}
-                  onChange={(e) => handleAccountNumberChange(e.target.value)}
-                  placeholder="계좌번호를 입력하세요 (숫자와 - 만 입력 가능)"
-                />
+                  {/* 계좌번호 */}
+                  <div className="col-span-2 space-y-2">
+                    <Label>계좌번호</Label>
+                    <Input
+                      value={formData.accountNumber}
+                      onChange={(e) => handleAccountNumberChange(e.target.value)}
+                      placeholder="계좌번호를 입력하세요 (숫자와 - 만 입력 가능)"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>

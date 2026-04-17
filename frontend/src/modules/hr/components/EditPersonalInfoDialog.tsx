@@ -1290,13 +1290,17 @@ export function EditPersonalInfoDialog({
               {/* 주소 */}
               <div className="col-span-2 space-y-2">
                 <Label>주소</Label>
-                <div className="flex gap-2">
-                  <Input value={formData.zipCode} readOnly placeholder="우편번호" />
-                  <Button type="button" onClick={() => setAddressDialogOpen(true)}>
-                    주소 검색
-                  </Button>
+                <div className="grid grid-cols-2 gap-x-6">
+                  {/* 1열: 우편번호 + 주소검색 */}
+                  <div className="flex gap-2">
+                    <Input value={formData.zipCode} readOnly placeholder="우편번호" className="flex-1" />
+                    <Button type="button" onClick={() => setAddressDialogOpen(true)}>
+                      주소 검색
+                    </Button>
+                  </div>
+                  {/* 2열: 주소 */}
+                  <Input value={formData.address} readOnly placeholder="주소" />
                 </div>
-                <Input value={formData.address} readOnly placeholder="주소" />
                 <Input
                   ref={detailAddressRef}
                   value={formData.detailAddress}
