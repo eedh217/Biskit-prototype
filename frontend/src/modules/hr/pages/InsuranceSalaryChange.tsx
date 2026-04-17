@@ -415,26 +415,6 @@ export function InsuranceSalaryChange(): JSX.Element {
     });
   };
 
-  // 신고 확인 다이얼로그용 주소 추출
-  // 서울: 구까지, 광역시: 구까지, 도 지역: 시까지 표시
-  const getShortAddress = (fullAddress: string): string => {
-    // 서울특별시 또는 서울인 경우 "서울 구명"으로 표시
-    if (fullAddress.includes('서울특별시') || fullAddress.startsWith('서울 ')) {
-      const match = fullAddress.match(/(서울특별시|서울)\s*(.*?구)/);
-      return match ? `서울 ${match[2]}` : fullAddress.split(' ').slice(0, 2).join(' ');
-    }
-
-    // 광역시인 경우 "시명 구명"으로 표시
-    if (fullAddress.includes('광역시')) {
-      const match = fullAddress.match(/(.*?)광역시\s*(.*?구)/);
-      return match ? `${match[1]} ${match[2]}` : fullAddress.split(' ').slice(0, 2).join(' ');
-    }
-
-    // 도 지역인 경우 "도명 시명"으로 표시
-    const match = fullAddress.match(/(.*?도)\s*(.*?시)/);
-    return match ? `${match[1]} ${match[2]}` : (fullAddress.split(' ')[0] ?? '');
-  };
-
   // 필수값 검증
   const isFormValid = useMemo(() => {
     // 사업장 정보 필수값 검증

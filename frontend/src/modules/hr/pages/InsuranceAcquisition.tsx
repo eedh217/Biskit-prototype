@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Info, Search, Trash2, Plus } from 'lucide-react';
+import { Search, Trash2, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { PageHeader } from '@/shared/components/common/PageHeader';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
   Select,
@@ -52,7 +52,6 @@ import {
   saveWorkplaceInfo,
   loadWorkplaceInfo,
   saveTempForm,
-  loadTempForm,
   clearTempForm,
   saveAcquisitionHistory,
   getAcquisitionHistories,
@@ -137,10 +136,6 @@ export function InsuranceAcquisition(): JSX.Element {
   const [employees, setEmployees] = useState<EmployeeInsuranceInfo[]>([createDefaultEmployee()]);
   const [selectedEmployeeIndex, setSelectedEmployeeIndex] = useState(0);
 
-  // 임시저장 정보
-  const [hasTempData, setHasTempData] = useState(false);
-  const [tempSavedAt, setTempSavedAt] = useState<string>('');
-
   // 신고내역 조회 Dialog
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [historyStartDate, setHistoryStartDate] = useState('');
@@ -210,11 +205,6 @@ export function InsuranceAcquisition(): JSX.Element {
         setWorkplace(savedWorkplace);
       }
 
-      const tempData = loadTempForm();
-      if (tempData) {
-        setHasTempData(true);
-        setTempSavedAt(tempData.savedAt || '');
-      }
     };
 
     loadInitialData();
@@ -591,9 +581,9 @@ export function InsuranceAcquisition(): JSX.Element {
       const employeeList = employees
         .filter(emp => emp.employeeId) // 직원이 선택된 항목만
         .map(emp => ({
-          employeeId: emp.employeeId,
+          employeeId: emp.employeeId as string,
           employeeName: emp.name,
-          employeeNumber: emp.employeeNumber,
+          employeeNumber: emp.employeeNumber as string,
         }));
 
       if (employeeList.length === 0) {
@@ -636,8 +626,6 @@ export function InsuranceAcquisition(): JSX.Element {
         reportDate: format(new Date(), 'yyyy-MM-dd'),
       };
       saveTempForm(formData);
-      setHasTempData(true);
-      setTempSavedAt(now.toISOString());
 
       toast({
         title: '임시 저장되었습니다.',
@@ -649,82 +637,6 @@ export function InsuranceAcquisition(): JSX.Element {
         variant: 'destructive',
       });
     }
-  };
-
-  // 임시 저장 불러오기
-  const handleLoadTempData = (): void => {
-    const tempData = loadTempForm();
-    if (!tempData) {
-      toast({
-        title: '불러올 임시 저장 데이터가 없습니다.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // 현재 작성 중인 데이터가 있는지 확인
-    const hasCurrentData =
-      workplace.managementNumber ||
-      workplace.name ||
-      workplace.postalCode ||
-      workplace.address ||
-      workplace.addressDetail ||
-      employees.some(
-        (emp) =>
-          emp.name ||
-          emp.residentNumber ||
-          emp.monthlySalary > 0 ||
-          emp.acquisitionDate
-      );
-
-    // 현재 데이터가 있으면 확인 메시지 표시
-    if (hasCurrentData) {
-      if (
-        !window.confirm(
-          '임시저장 데이터를 불러올 경우, 현재 입력한 데이터는 사라집니다. 불러오시겠습니까?'
-        )
-      ) {
-        return;
-      }
-    }
-
-    setWorkplace(tempData.workplace);
-    setEmployees(tempData.employees);
-
-    toast({
-      title: '임시 저장 데이터를 불러왔습니다.',
-    });
-  };
-
-  // 임시 저장 삭제
-  const handleClearTempData = (): void => {
-    clearTempForm();
-    setHasTempData(false);
-    setTempSavedAt('');
-
-    toast({
-      title: '임시 저장 데이터를 삭제했습니다.',
-    });
-  };
-
-  // 신고 확인 다이얼로그용 주소 추출
-  // 서울: 구까지, 광역시: 구까지, 도 지역: 시까지 표시
-  const getShortAddress = (fullAddress: string): string => {
-    // 서울특별시 또는 서울인 경우 "서울 구명"으로 표시
-    if (fullAddress.includes('서울특별시') || fullAddress.startsWith('서울 ')) {
-      const match = fullAddress.match(/(서울특별시|서울)\s*(.*?구)/);
-      return match ? `서울 ${match[2]}` : fullAddress.split(' ').slice(0, 2).join(' ');
-    }
-
-    // 광역시인 경우 "시명 구명"으로 표시
-    if (fullAddress.includes('광역시')) {
-      const match = fullAddress.match(/(.*?)광역시\s*(.*?구)/);
-      return match ? `${match[1]} ${match[2]}` : fullAddress.split(' ').slice(0, 2).join(' ');
-    }
-
-    // 도 지역인 경우 "도명 시명"으로 표시
-    const match = fullAddress.match(/(.*?도)\s*(.*?시)/);
-    return match ? `${match[1]} ${match[2]}` : (fullAddress.split(' ')[0] ?? '');
   };
 
   // 직원 개별 유효성 검사
@@ -791,9 +703,9 @@ export function InsuranceAcquisition(): JSX.Element {
       const employeeList = employees
         .filter(emp => emp.employeeId)
         .map(emp => ({
-          employeeId: emp.employeeId,
+          employeeId: emp.employeeId as string,
           employeeName: emp.name,
-          employeeNumber: emp.employeeNumber,
+          employeeNumber: emp.employeeNumber as string,
         }));
 
       if (employeeList.length === 0) {
@@ -846,8 +758,6 @@ export function InsuranceAcquisition(): JSX.Element {
 
       // 임시 저장 데이터 삭제
       clearTempForm();
-      setHasTempData(false);
-      setTempSavedAt('');
 
       toast({
         title: '자격취득 신고가 완료되었습니다.',
@@ -877,20 +787,6 @@ export function InsuranceAcquisition(): JSX.Element {
     );
     setHistories(results);
     setCurrentPage(1); // 검색 시 첫 페이지로 이동
-  };
-
-  // 신고내역 Dialog 열기
-  const handleOpenHistoryDialog = (): void => {
-    setHistoryDialogOpen(true);
-    setHistorySearch(''); // 검색어 초기화
-    setCurrentPage(1); // 페이지 초기화
-    // 검색어 없이 전체 내역 조회
-    const results = getAcquisitionHistories(
-      historyStartDate || undefined,
-      historyEndDate || undefined,
-      undefined
-    );
-    setHistories(results);
   };
 
   // 기간 설정 버튼 클릭
