@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, Trash2, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { PageHeader } from '@/shared/components/common/PageHeader';
@@ -59,6 +59,7 @@ import {
 import { acquisitionReportService } from '../services/acquisitionReportService';
 import type { Employee } from '../types/employee';
 import { COUNTRIES } from '@/shared/constants/countries';
+import { setNavigationGuard } from '@/shared/utils/navigationGuard';
 
 // 기본 직원 데이터 생성 함수
 const createDefaultEmployee = (): EmployeeInsuranceInfo => ({
@@ -97,6 +98,10 @@ const createDefaultEmployee = (): EmployeeInsuranceInfo => ({
 });
 
 export function InsuranceAcquisition(): JSX.Element {
+  const [isDirty, setIsDirty] = useState(false);
+  const isDirtyRef = useRef(false);
+  const isInitialLoadComplete = useRef(false);
+
   const [isComposing, setIsComposing] = useState(false);
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const [workplaceDialogOpen, setWorkplaceDialogOpen] = useState(false);
@@ -119,14 +124,14 @@ export function InsuranceAcquisition(): JSX.Element {
 
   // 사업장 정보
   const [workplace, setWorkplace] = useState<WorkplaceInfo>({
-    managementNumber: '',
-    name: '',
+    managementNumber: '12345678',
+    name: '에이티앤피파트너즈',
     unitName: '',
     branchName: '',
-    postalCode: '',
-    address: '',
-    addressDetail: '',
-    phoneNumber: '',
+    postalCode: '04506',
+    address: '서울 중구 중림로 31',
+    addressDetail: '3층',
+    phoneNumber: '02-1234-5678',
     faxNumber: '',
     email: '',
     mobilePhone: '',
@@ -207,8 +212,43 @@ export function InsuranceAcquisition(): JSX.Element {
 
     };
 
-    loadInitialData();
+    loadInitialData().then(() => {
+      setTimeout(() => { isInitialLoadComplete.current = true; }, 0);
+    });
   }, []);
+
+  // isDirty ref 동기화
+  useEffect(() => {
+    isDirtyRef.current = isDirty;
+  }, [isDirty]);
+
+  // isDirty 추적 (초기 로드 이후 state 변경 시)
+  useEffect(() => {
+    if (!isInitialLoadComplete.current) return;
+    setIsDirty(true);
+  }, [employees]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 새로고침/탭 닫기 방지
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent): void => {
+      if (isDirtyRef.current) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
+
+  // 메뉴/사이드바 클릭 이탈 방지 가드 등록
+  useEffect(() => {
+    if (isDirty) {
+      setNavigationGuard(() => window.confirm('자격 취득신고를 취소하시겠습니까?'));
+    } else {
+      setNavigationGuard(null);
+    }
+    return () => setNavigationGuard(null);
+  }, [isDirty]);
 
   // 신고내역 Dialog 열릴 때 기본 기간 설정 (1개월)
   useEffect(() => {
@@ -269,7 +309,9 @@ export function InsuranceAcquisition(): JSX.Element {
   // 사업장 정보 수정 저장
   const handleWorkplaceEditSave = (): void => {
     setWorkplace({ ...workplaceEditData });
+    saveWorkplaceInfo(workplaceEditData);
     setWorkplaceDialogOpen(false);
+    toast({ title: '사업장 정보를 저장하였습니다.' });
   };
 
   const isWorkplaceEditValid =
@@ -726,6 +768,8 @@ export function InsuranceAcquisition(): JSX.Element {
           formData: {
             workplace,
             employees,
+            workplaceFaxNumber,
+            agencyFaxNumber: faxNumber,
           },
         });
       } else {
@@ -738,6 +782,8 @@ export function InsuranceAcquisition(): JSX.Element {
           formData: {
             workplace,
             employees,
+            workplaceFaxNumber,
+            agencyFaxNumber: faxNumber,
           },
         });
 
@@ -763,10 +809,9 @@ export function InsuranceAcquisition(): JSX.Element {
         title: '자격취득 신고가 완료되었습니다.',
       });
 
-      // 확인 다이얼로그 닫기
+      setNavigationGuard(null);
       setConfirmDialogOpen(false);
 
-      // 상세 화면으로 이동
       window.history.pushState({}, '', `/hr/insurance/acquisition/detail/${completedReport.id}`);
       window.dispatchEvent(new PopStateEvent('popstate'));
     } catch (error) {
@@ -834,6 +879,8 @@ export function InsuranceAcquisition(): JSX.Element {
   };
 
   const handleBack = (): void => {
+    if (isDirtyRef.current && !window.confirm('자격 취득신고를 취소하시겠습니까?')) return;
+    setNavigationGuard(null);
     window.history.pushState({}, '', '/hr/insurance/acquisition');
     window.dispatchEvent(new PopStateEvent('popstate'));
   };

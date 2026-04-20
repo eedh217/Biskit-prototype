@@ -155,7 +155,7 @@ export function InsuranceAcquisitionDetail(): JSX.Element {
     );
   }
 
-  const { workplace, employees } = report.formData;
+  const { workplace, employees, workplaceFaxNumber, agencyFaxNumber } = report.formData as typeof report.formData & { workplaceFaxNumber?: string; agencyFaxNumber?: string };
 
   const renderEmployeeDetail = (employee: EmployeeInsuranceInfo): JSX.Element => (
     <Card className="flex-1 flex flex-col overflow-hidden">
@@ -427,6 +427,18 @@ export function InsuranceAcquisitionDetail(): JSX.Element {
                   <span className="text-sm text-gray-500">팩스발송</span>
                   <span className="text-sm">{report.status === 'draft' ? '-' : '발송성공'}</span>
                 </div>
+                {report.status !== 'draft' && (
+                  <>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-sm text-gray-500 shrink-0">사업장 FAX</span>
+                      <span className="text-sm text-right">{workplaceFaxNumber || '-'}</span>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <span className="text-sm text-gray-500 shrink-0">공단 FAX</span>
+                      <span className="text-sm text-right">{agencyFaxNumber || '-'}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

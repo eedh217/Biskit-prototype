@@ -15,11 +15,18 @@ import { InsuranceAcquisition } from './modules/hr/pages/InsuranceAcquisition';
 import { InsuranceAcquisitionList } from './modules/hr/pages/InsuranceAcquisitionList';
 import { InsuranceAcquisitionDetail } from './modules/hr/pages/InsuranceAcquisitionDetail';
 import { InsuranceLoss } from './modules/hr/pages/InsuranceLoss';
+import { InsuranceLossList } from './modules/hr/pages/InsuranceLossList';
+import { InsuranceLossDetail } from './modules/hr/pages/InsuranceLossDetail';
 import { InsuranceSalaryChange } from './modules/hr/pages/InsuranceSalaryChange';
+import { InsuranceSalaryChangeList } from './modules/hr/pages/InsuranceSalaryChangeList';
+import { InsuranceSalaryChangeDetail } from './modules/hr/pages/InsuranceSalaryChangeDetail';
 import { InsuranceTotalSalary } from './modules/hr/pages/InsuranceTotalSalary';
 import { DependentManagement } from './modules/hr/pages/DependentManagement';
+import { DependentManagementList } from './modules/hr/pages/DependentManagementList';
+import { DependentManagementDetail } from './modules/hr/pages/DependentManagementDetail';
 import { PayrollItems } from './modules/payroll/pages/PayrollItems';
 import { Toaster } from './shared/components/ui/toaster';
+import { checkNavigationGuard } from './shared/utils/navigationGuard';
 
 export function App(): JSX.Element {
   const [currentPath, setCurrentPath] = useState(
@@ -30,12 +37,16 @@ export function App(): JSX.Element {
 
   useEffect(() => {
     const handleNavigation = (): void => {
+      if (!checkNavigationGuard()) {
+        window.history.pushState({}, '', currentPath);
+        return;
+      }
       setCurrentPath(window.location.pathname + window.location.search);
     };
 
     window.addEventListener('popstate', handleNavigation);
     return () => window.removeEventListener('popstate', handleNavigation);
-  }, []);
+  }, [currentPath]);
 
   // 페이지 전환 시 스크롤을 맨 위로 이동
   useEffect(() => {
@@ -43,6 +54,7 @@ export function App(): JSX.Element {
   }, [currentPath]);
 
   const handleNavigate = (path: string): void => {
+    if (!checkNavigationGuard()) return;
     window.history.pushState({}, '', path);
     setCurrentPath(path);
   };
@@ -139,14 +151,34 @@ export function App(): JSX.Element {
       return <InsuranceAcquisitionList key={currentPath} />;
     }
 
-    // 인사 - 4대보험 관리 - 자격 상실신고
-    if (pathname === '/hr/insurance/loss') {
+    // 인사 - 4대보험 관리 - 자격 상실신고 (상세)
+    if (pathname.startsWith('/hr/insurance/loss/detail/')) {
+      return <InsuranceLossDetail key={currentPath} />;
+    }
+
+    // 인사 - 4대보험 관리 - 자격 상실신고 (신규/편집)
+    if (pathname.startsWith('/hr/insurance/loss/new') || pathname.startsWith('/hr/insurance/loss/edit/')) {
       return <InsuranceLoss key={currentPath} />;
     }
 
-    // 인사 - 4대보험 관리 - 보수월액 변경
-    if (pathname === '/hr/insurance/salary-change') {
+    // 인사 - 4대보험 관리 - 자격 상실신고 (리스트)
+    if (pathname === '/hr/insurance/loss') {
+      return <InsuranceLossList key={currentPath} />;
+    }
+
+    // 인사 - 4대보험 관리 - 보수월액 변경 (상세)
+    if (pathname.startsWith('/hr/insurance/salary-change/detail/')) {
+      return <InsuranceSalaryChangeDetail key={currentPath} />;
+    }
+
+    // 인사 - 4대보험 관리 - 보수월액 변경 (신규/편집)
+    if (pathname.startsWith('/hr/insurance/salary-change/new') || pathname.startsWith('/hr/insurance/salary-change/edit/')) {
       return <InsuranceSalaryChange key={currentPath} />;
+    }
+
+    // 인사 - 4대보험 관리 - 보수월액 변경 (리스트)
+    if (pathname === '/hr/insurance/salary-change') {
+      return <InsuranceSalaryChangeList key={currentPath} />;
     }
 
     // 인사 - 4대보험 관리 - 보수총액신고
@@ -154,9 +186,19 @@ export function App(): JSX.Element {
       return <InsuranceTotalSalary key={currentPath} />;
     }
 
-    // 인사 - 4대보험 관리 - 피부양자 관리
-    if (pathname === '/hr/insurance/dependent') {
+    // 인사 - 4대보험 관리 - 피부양자 관리 (상세)
+    if (pathname.startsWith('/hr/insurance/dependent/detail/')) {
+      return <DependentManagementDetail key={currentPath} />;
+    }
+
+    // 인사 - 4대보험 관리 - 피부양자 관리 (신규/편집)
+    if (pathname.startsWith('/hr/insurance/dependent/new') || pathname.startsWith('/hr/insurance/dependent/edit/')) {
       return <DependentManagement key={currentPath} />;
+    }
+
+    // 인사 - 4대보험 관리 - 피부양자 관리 (리스트)
+    if (pathname === '/hr/insurance/dependent') {
+      return <DependentManagementList key={currentPath} />;
     }
 
     // 인사 - 근태관리
