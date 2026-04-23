@@ -151,15 +151,7 @@ export function InsuranceAcquisitionList(): JSX.Element {
           >
             검색
           </Button>
-        </div>
-
-        {/* 리스트 개수 및 버튼 영역 */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">{filteredReports.length}개</span>
-          </div>
-
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <Button variant="outline" onClick={() => setReceiptCheckOpen(true)}>
               수신여부 확인
             </Button>
@@ -215,6 +207,7 @@ export function InsuranceAcquisitionList(): JSX.Element {
 
         {/* 데이터 테이블 */}
         <DataTable
+          noBorder
           columns={columns}
           data={filteredReports}
           pageSize={30}

@@ -18,9 +18,13 @@ import { formatDate, getEmploymentStatus, calculateTenure } from '../types/emplo
 import { formatNumber } from '@/shared/lib/utils';
 import { EditPersonalInfoDialog } from '../components/EditPersonalInfoDialog';
 import { EditOrganizationInfoDialog } from '../components/EditOrganizationInfoDialog';
-import { EditSalaryInfoDialog } from '../components/EditSalaryInfoDialog';
+import { SalaryContractEditDialog } from '@/modules/payroll/components/SalaryContractEditDialog';
 import { EmployeeHistoryTimeline } from '../components/EmployeeHistoryTimeline';
 import { LeaveTab } from '../components/LeaveTab';
+import { companyPayrollItemService } from '@/modules/payroll/services/companyPayrollItemService';
+import type { CompanyPayItem } from '@/modules/payroll/types/payroll';
+import { AlertCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 export function EmployeeDetail(): JSX.Element {
   // URL에서 ID 추출
@@ -43,6 +47,8 @@ export function EmployeeDetail(): JSX.Element {
     return saved === 'true';
   });
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const currentYear = Math.max(2026, new Date().getFullYear());
+  const [companyItems] = useState<CompanyPayItem[]>(() => companyPayrollItemService.getPayItems(currentYear));
 
   useEffect(() => {
     const loadEmployee = async (): Promise<void> => {
@@ -173,6 +179,34 @@ export function EmployeeDetail(): JSX.Element {
     return path.join(' > ');
   };
 
+  // 사용중단 항목 테스트용: Q01 출산보육수당 추가
+  const handleAddDeprecatedTestItem = async (): Promise<void> => {
+    if (!employee) return;
+    const q01Item = companyItems.find((ci) => ci.taxItemId === 'non-taxable-2025-Q01');
+    if (!q01Item) {
+      alert('출산보육수당 항목을 찾을 수 없습니다. 급여항목 관리에서 2026년 항목을 확인해주세요.');
+      return;
+    }
+    const alreadyExists = (employee.payrollTemplate ?? []).some((t) => t.itemId === q01Item.id || t.itemCode === q01Item.taxItemId);
+    if (alreadyExists) {
+      alert('이미 출산보육수당 항목이 있습니다.');
+      return;
+    }
+    const includeInAnnual = confirm('연봉 포함 여부를 선택해주세요.\n\n확인 → 연봉 포함\n취소 → 연봉 미포함');
+    const newItem = {
+      itemId: q01Item.id,
+      itemCode: q01Item.taxItemId,
+      itemName: q01Item.name,
+      amount: 100000,
+      category: q01Item.taxItemCategory as 'taxable' | 'non-taxable',
+      includeInAnnual,
+    };
+    await employeeService.update(employee.id, {
+      payrollTemplate: [...(employee.payrollTemplate ?? []), newItem],
+    });
+    await handleEditSuccess();
+  };
+
   // 수정 완료 시 직원 정보 다시 로드
   const handleEditSuccess = async (): Promise<void> => {
     if (!id || id === 'employee') return;
@@ -214,6 +248,10 @@ export function EmployeeDetail(): JSX.Element {
           </div>
         }
         showBackButton={true}
+        onBack={() => {
+          window.history.pushState(null, '', '/hr/employee');
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }}
       />
 
       <div className="space-y-6">
@@ -277,6 +315,16 @@ export function EmployeeDetail(): JSX.Element {
               </CardHeader>
               <CardContent className="space-y-3 pt-6">
             <div className="grid grid-cols-4 gap-4">
+              <span className="text-sm font-medium text-gray-500">사번</span>
+              <span className="col-span-3 text-sm">{employee.employeeNumber}</span>
+            </div>
+
+            <div className="grid grid-cols-4 gap-4">
+              <span className="text-sm font-medium text-gray-500">이름</span>
+              <span className="col-span-3 text-sm">{employee.name}</span>
+            </div>
+
+            <div className="grid grid-cols-4 gap-4">
               <span className="text-sm font-medium text-gray-500">내외국인 여부</span>
               <span className="col-span-3 text-sm">{nationalityTypeLabel}</span>
             </div>
@@ -329,6 +377,17 @@ export function EmployeeDetail(): JSX.Element {
               <span className="text-sm font-medium text-gray-500">거주구분</span>
               <span className="col-span-3 text-sm">{residenceTypeLabel}</span>
             </div>
+
+            {employee.residenceType === 'non-resident' && (
+              <div className="grid grid-cols-4 gap-4">
+                <span className="text-sm font-medium text-gray-500">거주지국</span>
+                <span className="col-span-3 text-sm">
+                  {employee.residenceCountry
+                    ? (findCountryByCode(employee.residenceCountry)?.nameKo ?? employee.residenceCountry)
+                    : '-'}
+                </span>
+              </div>
+            )}
 
             <div className="grid grid-cols-4 gap-4">
               <span className="text-sm font-medium text-gray-500">장애여부</span>
@@ -439,72 +498,131 @@ export function EmployeeDetail(): JSX.Element {
           {/* 급여정보 탭 */}
           <TabsContent value="salary">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                 <CardTitle className="text-lg">급여정보</CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEditSalaryInfoOpen(true)}
-                >
-                  수정
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddDeprecatedTestItem}
+                  >
+                    사용중단항목 테스트
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditSalaryInfoOpen(true)}
+                  >
+                    수정
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-6 pt-6">
-                {/* 연봉 */}
-                <div className="grid grid-cols-4 gap-4">
-                  <span className="text-sm font-medium text-gray-500">연봉</span>
-                  <span className="col-span-3 text-sm">
-                    {employee.annualSalary ? `${formatNumber(employee.annualSalary)}원` : '-'}
-                  </span>
-                </div>
-
+              <CardContent className="space-y-3 pt-0">
                 {/* 급여항목 템플릿 */}
-                <div className="space-y-3">
-                  {employee.payrollTemplate && employee.payrollTemplate.length > 0 ? (
-                    <>
-                      {[
-                        ...employee.payrollTemplate.filter(item => item.category === 'taxable'),
-                        ...employee.payrollTemplate.filter(item => item.category === 'non-taxable'),
-                      ].map((item, index) => (
-                        <div key={index} className="grid grid-cols-4 gap-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-500">
-                              {item.category === 'non-taxable' && item.itemCode !== item.itemName
-                                ? `${item.itemCode} - ${item.itemName}`
-                                : item.itemName}
+                {(() => {
+                  const template = employee.payrollTemplate ?? [];
+                  const inAnnual = template.filter(item => item.includeInAnnual);
+                  const notInAnnual = template.filter(item => !item.includeInAnnual);
+
+                  const calcedAnnual = inAnnual.reduce((sum, item) => {
+                    const ci = companyItems.find((c) => c.id === item.itemId);
+                    const isIrregular = ci?.paymentType === 'irregular';
+                    const months = isIrregular
+                      ? ((ci?.paymentMonths?.length ?? 0) > 0 ? ci!.paymentMonths! : (item.paymentMonths ?? [])).length
+                      : 12;
+                    return sum + item.amount * months;
+                  }, 0);
+
+                  const renderItem = (item: typeof template[0], index: number): JSX.Element => {
+                    const companyItem = companyItems.find((ci) => ci.id === item.itemId);
+                    const isIrregular = companyItem?.paymentType === 'irregular';
+                    const companyMonths = companyItem?.paymentMonths ?? [];
+                    const employeeMonths = item.paymentMonths ?? [];
+                    const effectiveMonths = companyMonths.length > 0 ? companyMonths : employeeMonths;
+                    const isDeprecated = companyItem?.isDeprecated ?? false;
+                    return (
+                      <div
+                        key={index}
+                        className={`grid grid-cols-[1fr_160px_1fr_1fr_20px] gap-x-2 items-center ${isDeprecated ? 'bg-red-50/60 -mx-4 px-4 py-1 rounded' : ''}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-500">
+                            {item.category === 'non-taxable' && item.itemCode && item.itemCode !== item.itemName
+                              ? `${item.itemCode.split('-').slice(3).join('-')} - ${item.itemName}`
+                              : item.itemName}
+                          </span>
+                          {item.category === 'non-taxable' && (
+                            <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                              비과세
                             </span>
-                            {item.category === 'non-taxable' && (
-                              <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                                비과세
-                              </span>
-                            )}
-                          </div>
-                          <span className="col-span-3 text-sm">{formatNumber(item.amount)}원</span>
+                          )}
                         </div>
-                      ))}
-                    </>
-                  ) : (
-                    <div className="text-sm text-gray-400 py-4 text-center border border-dashed rounded-md">
-                      등록된 급여항목이 없습니다
+                        <span className="text-sm">{formatNumber(item.amount)}원</span>
+                        <span className="text-xs text-gray-400">
+                          {isIrregular
+                            ? `비정기${effectiveMonths.length > 0 ? ` · ${effectiveMonths.join(', ')}월` : ''}`
+                            : '매월지급'}
+                        </span>
+                        <span />
+                        {isDeprecated ? (
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertCircle className="h-3.5 w-3.5 text-red-500 shrink-0 cursor-default" />
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                사용중단된 항목입니다. 급여항목 관리에서 처리해주세요.
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <span />
+                        )}
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <div className="space-y-3">
+                      {inAnnual.length > 0 && (
+                        <div className="rounded-lg border border-slate-200 overflow-hidden">
+                          <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
+                            <span className="text-sm font-semibold text-slate-600">
+                              {calcedAnnual > 0 ? `연봉 ${formatNumber(calcedAnnual)}원` : '-'}
+                            </span>
+                          </div>
+                          <div className="px-4 py-3 space-y-3">
+                            {inAnnual.map((item, index) => renderItem(item, index))}
+                          </div>
+                        </div>
+                      )}
+                      {notInAnnual.length > 0 && (
+                        <div className="rounded-lg border border-slate-200 overflow-hidden">
+                          <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
+                            <span className="text-sm font-semibold text-slate-600">연봉 미포함</span>
+                          </div>
+                          <div className="px-4 py-3 space-y-3">
+                            {notInAnnual.map((item, index) => renderItem(item, index))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
 
                 {/* 계좌정보 */}
-                <div className="pt-4 border-t space-y-3">
-                  <div className="grid grid-cols-4 gap-4">
+                <div className="pt-4 border-t space-y-3 px-4">
+                  <div className="grid grid-cols-[1fr_160px_1fr_1fr] gap-x-2">
                     <span className="text-sm font-medium text-gray-500">은행</span>
-                    <span className="col-span-3 text-sm">{employee.bankName || '-'}</span>
+                    <span className="text-sm">{employee.bankName || '-'}</span>
                   </div>
-
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-[1fr_160px_1fr_1fr] gap-x-2">
                     <span className="text-sm font-medium text-gray-500">예금주</span>
-                    <span className="col-span-3 text-sm">{employee.accountHolder || '-'}</span>
+                    <span className="text-sm">{employee.accountHolder || '-'}</span>
                   </div>
-
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-[1fr_160px_1fr_1fr] gap-x-2">
                     <span className="text-sm font-medium text-gray-500">계좌번호</span>
-                    <span className="col-span-3 text-sm">{employee.accountNumber || '-'}</span>
+                    <span className="text-sm">{employee.accountNumber || '-'}</span>
                   </div>
                 </div>
               </CardContent>
@@ -551,7 +669,7 @@ export function EmployeeDetail(): JSX.Element {
 
       {/* 급여정보 수정 다이얼로그 */}
       {employee && (
-        <EditSalaryInfoDialog
+        <SalaryContractEditDialog
           open={editSalaryInfoOpen}
           onOpenChange={setEditSalaryInfoOpen}
           employee={employee}

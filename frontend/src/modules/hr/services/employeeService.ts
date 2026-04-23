@@ -120,6 +120,7 @@ export const employeeService = {
       gender: dto.gender ?? null,
       nationality: dto.nationality ?? null,
       residenceType: dto.residenceType,
+      residenceCountry: dto.residenceCountry ?? null,
       disabilityType: dto.disabilityType,
       email: dto.email,
       contact: dto.contact ?? null,

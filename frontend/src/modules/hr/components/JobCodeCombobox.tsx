@@ -48,7 +48,7 @@ export function JobCodeCombobox({ value, onChange, className }: JobCodeComboboxP
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn('w-full justify-between font-normal', className)}
+          className={cn('w-full h-10 justify-between font-normal', className)}
         >
           <span className={cn('truncate', !value && 'text-muted-foreground')}>
             {value ? selectedLabel : '선택'}

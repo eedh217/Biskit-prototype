@@ -25,6 +25,10 @@ import { DependentManagement } from './modules/hr/pages/DependentManagement';
 import { DependentManagementList } from './modules/hr/pages/DependentManagementList';
 import { DependentManagementDetail } from './modules/hr/pages/DependentManagementDetail';
 import { PayrollItems } from './modules/payroll/pages/PayrollItems';
+import { PayrollLedgerList } from './modules/payroll/pages/PayrollLedgerList';
+import { PayrollLedgerDetail } from './modules/payroll/pages/PayrollLedgerDetail';
+import { SalaryContractList } from './modules/payroll/pages/SalaryContractList';
+import { SalaryContractBulkEdit } from './modules/payroll/pages/SalaryContractBulkEdit';
 import { Toaster } from './shared/components/ui/toaster';
 import { checkNavigationGuard } from './shared/utils/navigationGuard';
 
@@ -62,6 +66,7 @@ export function App(): JSX.Element {
   const renderPage = (): JSX.Element => {
     // pathname만 추출 (query string 제거)
     const pathname = currentPath.split('?')[0] || '/';
+    const searchParams = new URLSearchParams(currentPath.includes('?') ? currentPath.split('?')[1] : '');
 
     // 사업소득 - 월별목록 (사업소득 합산 화면 포함)
     if (
@@ -211,19 +216,30 @@ export function App(): JSX.Element {
       );
     }
 
+    // 급여 - 급여계약 관리 - 일괄수정
+    if (pathname === '/payroll/salary-contract/bulk-edit') {
+      return <SalaryContractBulkEdit key={currentPath} />;
+    }
+
+    // 급여 - 급여계약 관리
+    if (pathname === '/payroll/salary-contract') {
+      return <SalaryContractList key={currentPath} />;
+    }
+
     // 급여 - 급여항목
     if (pathname === '/payroll/items') {
       return <PayrollItems key={currentPath} />;
     }
 
-    // 급여 - 급여대장
+    // 급여 - 급여대장 상세
+    if (pathname === '/payroll/ledger/detail') {
+      const ledgerId = searchParams.get('id') ?? '';
+      return <PayrollLedgerDetail key={currentPath} ledgerId={ledgerId} />;
+    }
+
+    // 급여 - 급여대장 목록
     if (pathname === '/payroll/ledger' || pathname === '/payroll') {
-      return (
-        <div className="p-8">
-          <h1 className="text-2xl font-bold text-slate-800">급여대장</h1>
-          <p className="text-slate-600 mt-2">준비 중입니다.</p>
-        </div>
-      );
+      return <PayrollLedgerList key={currentPath} />;
     }
 
     // 기본 페이지
@@ -232,7 +248,11 @@ export function App(): JSX.Element {
 
   return (
     <>
-      <MainLayout currentPath={currentPath} onNavigate={handleNavigate}>
+      <MainLayout
+        currentPath={currentPath}
+        onNavigate={handleNavigate}
+        fullWidth={['/payroll/ledger/detail', '/payroll/salary-contract/bulk-edit'].includes(currentPath.split('?')[0] ?? '')}
+      >
         {renderPage()}
       </MainLayout>
       <Toaster />

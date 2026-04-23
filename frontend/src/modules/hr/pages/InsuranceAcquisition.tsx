@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
 import { Search, Trash2, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { PageHeader } from '@/shared/components/common/PageHeader';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
-import { Card, CardContent, CardHeader } from '@/shared/components/ui/card';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
   Select,
@@ -98,9 +98,22 @@ const createDefaultEmployee = (): EmployeeInsuranceInfo => ({
 });
 
 export function InsuranceAcquisition(): JSX.Element {
+  const ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'];
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+  const MAX_FILES_PER_EMPLOYEE = 5;
+
   const [isDirty, setIsDirty] = useState(false);
   const isDirtyRef = useRef(false);
   const isInitialLoadComplete = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  interface AttachmentItem {
+    name: string;
+    size: number;
+    file?: File; // 복원된 경우 undefined (재첨부 필요)
+  }
+
+  const [attachments, setAttachments] = useState<AttachmentItem[][]>([[]]);
 
   const [isComposing, setIsComposing] = useState(false);
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
@@ -189,6 +202,13 @@ export function InsuranceAcquisition(): JSX.Element {
             // formData에서 workplace와 employees 복원
             setWorkplace(report.formData.workplace);
             setEmployees(report.formData.employees);
+
+            // 첨부서류 메타데이터 복원
+            if (report.formData.attachmentsMetadata) {
+              setAttachments(report.formData.attachmentsMetadata);
+            } else {
+              setAttachments(report.formData.employees.map(() => []));
+            }
 
             toast({
               title: '작성중인 신고 데이터를 불러왔습니다.',
@@ -524,6 +544,7 @@ export function InsuranceAcquisition(): JSX.Element {
   // 직원 추가
   const handleAddEmployee = (): void => {
     setEmployees((prev) => [...prev, createDefaultEmployee()]);
+    setAttachments((prev) => [...prev, []]);
     setSelectedEmployeeIndex(employees.length);
   };
 
@@ -531,11 +552,58 @@ export function InsuranceAcquisition(): JSX.Element {
   const handleDeleteSingleEmployee = (index: number): void => {
     const newEmployees = employees.filter((_, i) => i !== index);
     setEmployees(newEmployees);
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
     if (index >= newEmployees.length) {
       setSelectedEmployeeIndex(newEmployees.length - 1);
     } else {
       setSelectedEmployeeIndex(index);
     }
+  };
+
+  // 파일 첨부
+  const handleFileUpload = (employeeIndex: number, files: FileList | null): void => {
+    if (!files) return;
+    const currentFiles = attachments[employeeIndex] || [];
+    const newFiles: AttachmentItem[] = [];
+    let errorMsg = '';
+
+    Array.from(files).forEach((file) => {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        errorMsg = `${file.name}: 지원하지 않는 파일 형식입니다. (PDF, JPG, JPEG, PNG만 가능)`;
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        errorMsg = `${file.name}: 파일 크기가 5MB를 초과합니다.`;
+        return;
+      }
+      if (currentFiles.length + newFiles.length >= MAX_FILES_PER_EMPLOYEE) {
+        errorMsg = `최대 ${MAX_FILES_PER_EMPLOYEE}개까지 첨부 가능합니다.`;
+        return;
+      }
+      newFiles.push({ name: file.name, size: file.size, file });
+    });
+
+    if (errorMsg) {
+      toast({ title: errorMsg, variant: 'destructive' });
+    }
+    if (newFiles.length > 0) {
+      setAttachments((prev) => {
+        const updated = [...prev];
+        updated[employeeIndex] = [...(updated[employeeIndex] || []), ...newFiles];
+        return updated;
+      });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // 파일 삭제
+  const handleDeleteFile = (employeeIndex: number, fileIndex: number): void => {
+    setAttachments((prev) => {
+      const updated = [...prev];
+      updated[employeeIndex] = (updated[employeeIndex] || []).filter((_, i) => i !== fileIndex);
+      return updated;
+    });
   };
 
 
@@ -636,6 +704,10 @@ export function InsuranceAcquisition(): JSX.Element {
         return;
       }
 
+      const attachmentsMetadata = attachments.map((fileArr) =>
+        fileArr.map(({ name, size }) => ({ name, size }))
+      );
+
       const reportData = {
         reportDate,
         status: 'draft' as const,
@@ -644,6 +716,7 @@ export function InsuranceAcquisition(): JSX.Element {
         formData: {
           workplace,
           employees,
+          attachmentsMetadata,
         },
       };
 
@@ -760,6 +833,10 @@ export function InsuranceAcquisition(): JSX.Element {
 
       let completedReport;
 
+      const attachmentsMetadata = attachments.map((fileArr) =>
+        fileArr.map(({ name, size }) => ({ name, size }))
+      );
+
       if (reportId) {
         // 편집 모드: 기존 draft를 complete 상태로 업데이트
         completedReport = await acquisitionReportService.complete(reportId, {
@@ -770,6 +847,7 @@ export function InsuranceAcquisition(): JSX.Element {
             employees,
             workplaceFaxNumber,
             agencyFaxNumber: faxNumber,
+            attachmentsMetadata,
           },
         });
       } else {
@@ -784,6 +862,7 @@ export function InsuranceAcquisition(): JSX.Element {
             employees,
             workplaceFaxNumber,
             agencyFaxNumber: faxNumber,
+            attachmentsMetadata,
           },
         });
 
@@ -1682,12 +1761,71 @@ export function InsuranceAcquisition(): JSX.Element {
                         </div>
                       </div>
                     )}
+                    {/* 첨부서류 */}
+                    <div className="border-t pt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">첨부서류</h4>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={(attachments[index] || []).length >= MAX_FILES_PER_EMPLOYEE}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          파일 추가
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-3">
+                        PDF, JPG, JPEG, PNG · 파일당 최대 5MB · 최대 5개
+                      </p>
+                      {(attachments[index] || []).length > 0 ? (
+                        <div className="space-y-2">
+                          {(attachments[index] || []).map((item, fileIdx) => (
+                            <div key={fileIdx} className={`flex items-center justify-between p-2 border rounded-md ${item.file ? 'bg-gray-50' : 'bg-amber-50 border-amber-200'}`}>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm truncate">{item.name}</span>
+                                <span className="text-xs text-gray-400 shrink-0">
+                                  ({(item.size / 1024).toFixed(0)}KB)
+                                </span>
+                                {!item.file && (
+                                  <span className="text-xs text-amber-600 shrink-0">재첨부 필요</span>
+                                )}
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0 ml-2"
+                                onClick={() => handleDeleteFile(index, fileIdx)}
+                              >
+                                <Trash2 className="h-4 w-4 text-gray-400" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="border border-dashed rounded-md p-4 text-center text-sm text-gray-400">
+                          첨부된 파일이 없습니다.
+                        </div>
+                      )}
+                    </div>
                 </CardContent>
               </Card>
             );
           })()}
         </div>
       </div>
+
+      {/* 파일 입력 (숨김) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.jpg,.jpeg,.png"
+        multiple
+        onChange={(e) => handleFileUpload(selectedEmployeeIndex, e.target.files)}
+      />
 
       {/* 하단 버튼 영역 */}
       <div className="fixed bottom-0 left-[305px] right-0 z-10">
@@ -1792,9 +1930,7 @@ export function InsuranceAcquisition(): JSX.Element {
               </Button>
             </div>
 
-            <div className="text-sm text-gray-600 mb-2">
-              총 {histories.length}건
-            </div>
+
 
             <div className="border rounded">
               <Table>

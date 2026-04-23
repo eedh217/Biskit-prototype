@@ -137,6 +137,22 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
     [selectedIds, data?.data]
   );
 
+  const rowSelectionState = useMemo(
+    () => Object.fromEntries(selectedIds.map((id) => [id, true])),
+    [selectedIds]
+  );
+
+  const customTotalLabel = useMemo(() => {
+    const total = data?.total ?? 0;
+    const totalRecords = data?.totalRecords ?? 0;
+    const hasExceptionData = data?.data.some((item) => item.isGrouped) ?? false;
+
+    if (month !== 12 || !hasExceptionData || total === totalRecords) {
+      return `총 ${total}건`;
+    }
+    return `총 ${total}건(${totalRecords}개)`;
+  }, [data, month]);
+
   const handleDeleteSelected = (): void => {
     if (selectedIds.length === 0) return;
 
@@ -396,6 +412,11 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
           </div>
         </div>
 
+        <div className="mb-4 text-sm text-gray-600">
+          ※ 간이지급명세서 신고 후 데이터가 수정되거나 추가된 대상자는 좌측
+          체크박스에서 체크 후 간이지급명세서 개별 생성을 진행해주세요.
+        </div>
+
         <div className="flex items-center gap-2 mb-4">
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -416,37 +437,7 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
           >
             검색
           </Button>
-        </div>
-
-        <div className="mb-2 text-sm text-gray-600">
-          ※ 간이지급명세서 신고 후 데이터가 수정되거나 추가된 대상자는 좌측
-          체크박스에서 체크 후 간이지급명세서 개별 생성을 진행해주세요.
-        </div>
-
-        <div className="flex justify-between items-center mb-4">
-          {/* 왼쪽: 리스트 개수 (2.4) */}
-          <div className="text-sm font-medium">
-            {(() => {
-              const total = data?.total ?? 0;
-              const totalRecords = data?.totalRecords ?? 0;
-              const hasExceptionData = data?.data.some((item) => item.isGrouped) ?? false;
-
-              // 1~11월: "N건" 형식만
-              if (month !== 12) {
-                return `${total}건`;
-              }
-
-              // 12월: 예외규칙 데이터 있으면 "N건(X개)", 없으면 "N건"
-              if (hasExceptionData && total !== totalRecords) {
-                return `${total}건(${totalRecords}개)`;
-              }
-
-              return `${total}건`;
-            })()}
-          </div>
-
-          {/* 오른쪽: 버튼들 */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <Button
               variant="destructive"
               onClick={handleDeleteSelected}
@@ -472,6 +463,9 @@ export function BusinessIncomeMonthlyList(): JSX.Element {
           onRowClick={handleRowClick}
           pageSize={30}
           getRowClassName={getRowClassName}
+          rowSelection={rowSelectionState}
+          getRowId={(row) => row.id}
+          customTotalLabel={customTotalLabel}
         />
       </div>
     </>

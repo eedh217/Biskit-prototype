@@ -85,7 +85,7 @@ export function EmployeeCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="w-full h-10 justify-between"
         >
           <span className={cn(!selectedEmployee && 'text-muted-foreground')}>
             {selectedEmployee

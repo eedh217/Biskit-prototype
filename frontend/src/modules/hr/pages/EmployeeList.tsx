@@ -256,14 +256,7 @@ export function EmployeeList(): JSX.Element {
           >
             검색
           </Button>
-        </div>
-
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">{data?.total ?? 0}개</span>
-          </div>
-
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <Button
               variant="destructive"
               onClick={handleDeleteSelected}
@@ -308,6 +301,7 @@ export function EmployeeList(): JSX.Element {
         </div>
 
         <DataTable
+          noBorder
           columns={employeeColumns}
           data={employeesWithDepartment}
           onRowClick={(row) => {
@@ -323,6 +317,7 @@ export function EmployeeList(): JSX.Element {
           rowSelection={selectedRows}
           onRowSelectionChange={setSelectedRows}
           getRowId={(row) => row.id}
+          rowLabel="명"
         />
       </div>
     </>

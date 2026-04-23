@@ -15,25 +15,29 @@ import {
   PopoverTrigger,
 } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import { PAYROLL_ITEMS_2026 } from '../constants/payrollItems2026';
+import { getTaxItemsByYear } from '../services/companyPayrollItemService';
 
 interface PayrollItemComboboxProps {
   value?: string; // 선택된 급여항목 ID
   onChange: (itemId: string) => void;
   error?: boolean; // 에러 상태 (빨간 테두리)
+  year?: number; // 연도 (기본값 2026)
 }
 
 export function PayrollItemCombobox({
   value,
   onChange,
   error = false,
+  year = 2026,
 }: PayrollItemComboboxProps): JSX.Element {
   const [open, setOpen] = useState(false);
 
+  const payrollItems = getTaxItemsByYear(year);
+
   // 전체 항목 리스트
   const allItems = [
-    ...PAYROLL_ITEMS_2026.taxableItems.map(item => ({ ...item, category: 'taxable' as const })),
-    ...PAYROLL_ITEMS_2026.nonTaxableItems.map(item => ({ ...item, category: 'non-taxable' as const })),
+    ...payrollItems.taxableItems.map(item => ({ ...item, category: 'taxable' as const })),
+    ...payrollItems.nonTaxableItems.map(item => ({ ...item, category: 'non-taxable' as const })),
   ];
 
   // 선택된 항목 찾기
@@ -52,7 +56,7 @@ export function PayrollItemCombobox({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            'w-full justify-between',
+            'w-full h-10 justify-between',
             error && 'border-red-500'
           )}
         >
@@ -74,7 +78,7 @@ export function PayrollItemCombobox({
 
             {/* 과세 항목 */}
             <CommandGroup heading="과세">
-              {PAYROLL_ITEMS_2026.taxableItems.map((item) => (
+              {payrollItems.taxableItems.map((item) => (
                 <CommandItem
                   key={item.id}
                   value={`${item.name}`}
@@ -93,7 +97,7 @@ export function PayrollItemCombobox({
 
             {/* 비과세 항목 */}
             <CommandGroup heading="비과세">
-              {PAYROLL_ITEMS_2026.nonTaxableItems.map((item) => (
+              {payrollItems.nonTaxableItems.map((item) => (
                 <CommandItem
                   key={item.id}
                   value={`${item.code} ${item.name}`}

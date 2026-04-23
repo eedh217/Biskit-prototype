@@ -16,19 +16,31 @@ import {
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
+  rowLabel?: string;
+  customTotalLabel?: string;
 }
 
 export function DataTablePagination<TData>({
   table,
+  rowLabel = '개',
+  customTotalLabel,
 }: DataTablePaginationProps<TData>): JSX.Element {
+  const total = table.getFilteredRowModel().rows.length;
+  const selected = table.getFilteredSelectedRowModel().rows.length;
+
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex-1 text-sm text-muted-foreground">
-        {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <span>
-            총 {table.getFilteredRowModel().rows.length}개 중{' '}
-            {table.getFilteredSelectedRowModel().rows.length}개 선택됨
-          </span>
+        {customTotalLabel ? (
+          selected > 0 ? (
+            <span>{customTotalLabel} 중 {selected}건 선택됨</span>
+          ) : (
+            <span>{customTotalLabel}</span>
+          )
+        ) : selected > 0 ? (
+          <span>총 {total}{rowLabel} 중 {selected}{rowLabel} 선택됨</span>
+        ) : (
+          <span>총 {total}{rowLabel}</span>
         )}
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8">

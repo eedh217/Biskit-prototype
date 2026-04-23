@@ -1316,9 +1316,7 @@ export function InsuranceTotalSalary(): JSX.Element {
 
             {/* 신고내역 리스트 */}
             <div className="space-y-2">
-              <div className="text-sm text-gray-600">
-                총 {filteredHistories.length}건
-              </div>
+
               {filteredHistories.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   신고내역이 없습니다.

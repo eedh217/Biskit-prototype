@@ -101,12 +101,12 @@ export function DependentManagementDetail(): JSX.Element {
     );
   }
 
-  const { workplace, employees, workplaceFaxNumber, agencyFaxNumber } = report.formData as { workplace: { managementNumber: string; name: string; address: string; addressDetail: string; phoneNumber: string }; employees: EmployeeDependentManagement[]; workplaceFaxNumber?: string; agencyFaxNumber?: string };
+  const { workplace, employees, workplaceFaxNumber, agencyFaxNumber, attachmentsMetadata } = report.formData as { workplace: { managementNumber: string; name: string; address: string; addressDetail: string; phoneNumber: string }; employees: EmployeeDependentManagement[]; workplaceFaxNumber?: string; agencyFaxNumber?: string; attachmentsMetadata?: { name: string; size: number }[][] };
   const employee = employees?.[0];
   const dependents: DependentWithManagementInfo[] = employee?.dependents ?? [];
   const currentDependent = dependents[selectedDependentIndex];
 
-  const renderDependentDetail = (dep: DependentWithManagementInfo): JSX.Element => (
+  const renderDependentDetail = (dep: DependentWithManagementInfo, dependentIndex: number): JSX.Element => (
     <Card className="flex-1 flex flex-col overflow-hidden">
       <CardContent className="pt-6 space-y-6 overflow-auto flex-1">
 
@@ -193,6 +193,25 @@ export function DependentManagementDetail(): JSX.Element {
                 <span className="text-sm font-medium text-gray-500">체류기간</span>
                 <span className="col-span-3 text-sm">{dep.residencePeriod || '-'}</span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 첨부서류 */}
+        {attachmentsMetadata && attachmentsMetadata[dependentIndex] && attachmentsMetadata[dependentIndex].length > 0 && (
+          <div className="border-t pt-4">
+            <h4 className="font-medium mb-3">첨부서류</h4>
+            <div className="space-y-2">
+              {attachmentsMetadata[dependentIndex].map((file: { name: string; size: number }, fileIdx: number) => (
+                <div
+                  key={fileIdx}
+                  className="flex items-center justify-between p-2 border rounded-md bg-gray-50 cursor-pointer hover:bg-gray-100"
+                  onClick={() => window.open(window.location.href, '_blank')}
+                >
+                  <span className="text-sm text-blue-600 underline truncate">{file.name}</span>
+                  <span className="text-xs text-gray-400 shrink-0 ml-2">({(file.size / 1024).toFixed(0)}KB)</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -310,7 +329,7 @@ export function DependentManagementDetail(): JSX.Element {
         {/* 우측 패널 */}
         <div className="flex-1 flex flex-col min-h-0">
           {currentDependent ? (
-            renderDependentDetail(currentDependent)
+            renderDependentDetail(currentDependent, selectedDependentIndex)
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
               피부양자를 선택하세요.

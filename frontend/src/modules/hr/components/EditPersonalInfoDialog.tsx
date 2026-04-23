@@ -55,6 +55,7 @@ interface FormData {
   gender: 'male' | 'female' | '';
   nationality: string;
   residenceType: 'resident' | 'non-resident';
+  residenceCountry: string;
   disabilityType: 'none' | 'disabled' | 'veteran' | 'severe';
   email: string;
   contact: string;
@@ -168,6 +169,7 @@ export function EditPersonalInfoDialog({
       gender: employee.gender || '',
       nationality: employee.nationality || '',
       residenceType: employee.residenceType,
+      residenceCountry: employee.residenceCountry || '',
       disabilityType: employee.disabilityType,
       email: employee.email,
       contact: employee.contact || '',
@@ -659,6 +661,21 @@ export function EditPersonalInfoDialog({
         });
       }
 
+      // 거주지국
+      const newResidenceCountry = formData.residenceType === 'non-resident' ? (formData.residenceCountry || null) : null;
+      if (newResidenceCountry !== employee.residenceCountry) {
+        const oldLabel = employee.residenceCountry ? (findCountryByCode(employee.residenceCountry)?.nameKo ?? employee.residenceCountry) : '-';
+        const newLabel = newResidenceCountry ? (findCountryByCode(newResidenceCountry)?.nameKo ?? newResidenceCountry) : '-';
+        changes.push({
+          fieldName: '거주지국',
+          fieldKey: 'residenceCountry',
+          oldValue: employee.residenceCountry,
+          newValue: newResidenceCountry,
+          displayOldValue: oldLabel,
+          displayNewValue: newLabel,
+        });
+      }
+
       // 장애여부
       if (formData.disabilityType !== employee.disabilityType) {
         const disabilityLabel = (type: string): string => {
@@ -796,6 +813,7 @@ export function EditPersonalInfoDialog({
         gender: newGender,
         nationality: newNationality,
         residenceType: formData.residenceType,
+        residenceCountry: formData.residenceType === 'non-resident' ? (formData.residenceCountry || null) : null,
         disabilityType: formData.disabilityType,
         email: formData.email,
         contact: newContact,
@@ -876,31 +894,62 @@ export function EditPersonalInfoDialog({
                 {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
               </div>
 
+              {/* 이메일 */}
+              <div className="space-y-2">
+                <Label htmlFor="email">
+                  이메일 <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  onBlur={handleEmailBlur}
+                  placeholder="이메일을 입력하세요"
+                />
+                {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email}</p>}
+              </div>
+
               {/* 내외국인 여부 */}
-              <div className="col-span-2 space-y-2">
+              <div className="space-y-2">
                 <Label>
                   내외국인 여부 <span className="text-red-500">*</span>
                 </Label>
-                <RadioGroup
-                  value={formData.nationalityType}
-                  onValueChange={(value: 'domestic' | 'foreign') =>
-                    handleChange('nationalityType', value)
-                  }
-                  className="h-10 flex items-center gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="domestic" id="domestic" />
-                    <Label htmlFor="domestic" className="cursor-pointer">
-                      내국인
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="foreign" id="foreign" />
-                    <Label htmlFor="foreign" className="cursor-pointer">
-                      외국인
-                    </Label>
-                  </div>
-                </RadioGroup>
+                <div className="flex items-center gap-4 h-10">
+                  <RadioGroup
+                    value={formData.nationalityType}
+                    onValueChange={(value: 'domestic' | 'foreign') =>
+                      handleChange('nationalityType', value)
+                    }
+                    className="flex items-center gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="domestic" id="domestic" />
+                      <Label htmlFor="domestic" className="cursor-pointer">내국인</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="foreign" id="foreign" />
+                      <Label htmlFor="foreign" className="cursor-pointer">외국인</Label>
+                    </div>
+                  </RadioGroup>
+                  {formData.nationalityType === 'foreign' && (
+                    <Select
+                      value={formData.foreignerIdType}
+                      onValueChange={(value: 'foreigner' | 'passport') => {
+                        handleChange('foreignerIdType', value);
+                        if (value === 'passport') handleChange('gender', 'male');
+                      }}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="foreigner">외국인등록번호</SelectItem>
+                        <SelectItem value="passport">여권번호</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
 
               {/* 내국인 - 주민등록번호 */}
@@ -947,213 +996,191 @@ export function EditPersonalInfoDialog({
                 </div>
               )}
 
-              {/* 외국인 - 신분증 선택 및 입력 */}
-              {formData.nationalityType === 'foreign' && (
+              {/* 외국인 - 외국인등록번호 */}
+              {formData.nationalityType === 'foreign' && formData.foreignerIdType === 'foreigner' && (
                 <>
-                  {/* 신분증 타입 선택 */}
-                  <div className="col-span-2 space-y-2">
+                  <div className="space-y-2">
                     <Label>
-                      신분증 선택 <span className="text-red-500">*</span>
+                      외국인등록번호 <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={formData.foreignerRegistrationNumberFront}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          handleChange('foreignerRegistrationNumberFront', value);
+                          if (value.length === 6) {
+                            skipValidationRef.current = true;
+                            foreignerBackRef.current?.focus();
+                          }
+                        }}
+                        onBlur={handleForeignerRegistrationNumberBlur}
+                        maxLength={6}
+                        placeholder="앞 6자리"
+                        className="flex-1"
+                      />
+                      <span>-</span>
+                      <Input
+                        ref={foreignerBackRef}
+                        type="text"
+                        value={formData.foreignerRegistrationNumberBack}
+                        onChange={(e) =>
+                          handleChange('foreignerRegistrationNumberBack', e.target.value)
+                        }
+                        onBlur={handleForeignerRegistrationNumberBlur}
+                        maxLength={7}
+                        placeholder="뒤 7자리"
+                        className="flex-1"
+                      />
+                    </div>
+                    {errors.foreignerRegistrationNumber && (
+                      <p className="text-sm text-red-500 mt-1">
+                        {errors.foreignerRegistrationNumber}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="nationality">
+                      국적 <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.nationality}
+                      onValueChange={(value) => handleChange('nationality', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="국적을 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.map((country) => (
+                          <SelectItem key={country.code} value={country.code}>
+                            {country.nameKo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              {/* 외국인 - 여권번호 */}
+              {formData.nationalityType === 'foreign' && formData.foreignerIdType === 'passport' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="passportNumber">
+                      여권번호 <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="passportNumber"
+                      value={formData.passportNumber}
+                      onChange={(e) => handlePassportNumberChange(e.target.value)}
+                      placeholder="여권번호를 입력하세요"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="nationality">
+                      국적 <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.nationality}
+                      onValueChange={(value) => handleChange('nationality', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="국적을 선택하세요" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.map((country) => (
+                          <SelectItem key={country.code} value={country.code}>
+                            {country.nameKo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>
+                      성별 <span className="text-red-500">*</span>
                     </Label>
                     <RadioGroup
-                      value={formData.foreignerIdType}
-                      onValueChange={(value: 'foreigner' | 'passport') =>
-                        handleChange('foreignerIdType', value)
+                      value={formData.gender}
+                      onValueChange={(value: 'male' | 'female') =>
+                        handleChange('gender', value)
                       }
                       className="h-10 flex items-center gap-4"
                     >
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="foreigner" id="id-foreigner" />
-                        <Label htmlFor="id-foreigner" className="cursor-pointer">
-                          외국인등록번호
-                        </Label>
+                        <RadioGroupItem value="male" id="male" />
+                        <Label htmlFor="male" className="cursor-pointer">남</Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="passport" id="id-passport" />
-                        <Label htmlFor="id-passport" className="cursor-pointer">
-                          여권번호
-                        </Label>
+                        <RadioGroupItem value="female" id="female" />
+                        <Label htmlFor="female" className="cursor-pointer">여</Label>
                       </div>
                     </RadioGroup>
                   </div>
 
-                  {/* 외국인등록번호 입력 */}
-                  {formData.foreignerIdType === 'foreigner' && (
-                    <>
-                      <div className="space-y-2">
-                        <Label>
-                          외국인등록번호 <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={formData.foreignerRegistrationNumberFront}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              handleChange('foreignerRegistrationNumberFront', value);
-                              if (value.length === 6) {
-                                skipValidationRef.current = true;
-                                foreignerBackRef.current?.focus();
-                              }
-                            }}
-                            onBlur={handleForeignerRegistrationNumberBlur}
-                            maxLength={6}
-                            placeholder="앞 6자리"
-                            className="flex-1"
-                          />
-                          <span>-</span>
-                          <Input
-                            ref={foreignerBackRef}
-                            type="text"
-                            value={formData.foreignerRegistrationNumberBack}
-                            onChange={(e) =>
-                              handleChange('foreignerRegistrationNumberBack', e.target.value)
-                            }
-                            onBlur={handleForeignerRegistrationNumberBlur}
-                            maxLength={7}
-                            placeholder="뒤 7자리"
-                            className="flex-1"
-                          />
-                        </div>
-                        {errors.foreignerRegistrationNumber && (
-                          <p className="text-sm text-red-500 mt-1">
-                            {errors.foreignerRegistrationNumber}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* 국적 */}
-                      <div className="space-y-2">
-                        <Label htmlFor="nationality">
-                          국적 <span className="text-red-500">*</span>
-                        </Label>
-                        <Select
-                          value={formData.nationality}
-                          onValueChange={(value) => handleChange('nationality', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="국적을 선택하세요" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {COUNTRIES.map((country) => (
-                              <SelectItem key={country.code} value={country.code}>
-                                {country.nameKo}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  )}
-
-                  {/* 여권번호 입력 */}
-                  {formData.foreignerIdType === 'passport' && (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="passportNumber">
-                          여권번호 <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="passportNumber"
-                          value={formData.passportNumber}
-                          onChange={(e) => handlePassportNumberChange(e.target.value)}
-                          placeholder="여권번호를 입력하세요"
-                        />
-                      </div>
-
-                      {/* 국적 */}
-                      <div className="space-y-2">
-                        <Label htmlFor="nationality">
-                          국적 <span className="text-red-500">*</span>
-                        </Label>
-                        <Select
-                          value={formData.nationality}
-                          onValueChange={(value) => handleChange('nationality', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="국적을 선택하세요" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {COUNTRIES.map((country) => (
-                              <SelectItem key={country.code} value={country.code}>
-                                {country.nameKo}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>
-                          성별 <span className="text-red-500">*</span>
-                        </Label>
-                        <RadioGroup
-                          value={formData.gender}
-                          onValueChange={(value: 'male' | 'female') =>
-                            handleChange('gender', value)
-                          }
-                          className="h-10 flex items-center gap-4"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="male" id="male" />
-                            <Label htmlFor="male" className="cursor-pointer">
-                              남
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="female" id="female" />
-                            <Label htmlFor="female" className="cursor-pointer">
-                              여
-                            </Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="birthDate">
-                          생년월일 <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="birthDate"
-                          value={formData.birthDate}
-                          onChange={(e) => handleChange('birthDate', e.target.value)}
-                          onBlur={() => handleDateBlur('birthDate')}
-                          maxLength={8}
-                          placeholder="YYYYMMDD"
-                        />
-                        {errors.birthDate && (
-                          <p className="text-sm text-red-500 mt-1">{errors.birthDate}</p>
-                        )}
-                      </div>
-                    </>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="birthDate">
+                      생년월일 <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="birthDate"
+                      value={formData.birthDate}
+                      onChange={(e) => handleChange('birthDate', e.target.value)}
+                      onBlur={() => handleDateBlur('birthDate')}
+                      maxLength={8}
+                      placeholder="YYYYMMDD"
+                    />
+                    {errors.birthDate && (
+                      <p className="text-sm text-red-500 mt-1">{errors.birthDate}</p>
+                    )}
+                  </div>
                 </>
               )}
 
-              {/* 거주구분 */}
-              <div className="col-span-2 space-y-2">
+              {/* 거주구분 (비거주자 시 거주지국 인라인) */}
+              <div className="space-y-2">
                 <Label>
                   거주구분 <span className="text-red-500">*</span>
                 </Label>
-                <RadioGroup
-                  value={formData.residenceType}
-                  onValueChange={(value: 'resident' | 'non-resident') =>
-                    handleChange('residenceType', value)
-                  }
-                  className="h-10 flex items-center gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="resident" id="resident" />
-                    <Label htmlFor="resident" className="cursor-pointer">
-                      거주자
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="non-resident" id="non-resident" />
-                    <Label htmlFor="non-resident" className="cursor-pointer">
-                      비거주자
-                    </Label>
-                  </div>
-                </RadioGroup>
+                <div className="flex items-center gap-4 h-10">
+                  <RadioGroup
+                    value={formData.residenceType}
+                    onValueChange={(value: 'resident' | 'non-resident') => {
+                      handleChange('residenceType', value);
+                      if (value === 'resident') handleChange('residenceCountry', '');
+                    }}
+                    className="flex items-center gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="resident" id="resident" />
+                      <Label htmlFor="resident" className="cursor-pointer">거주자</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="non-resident" id="non-resident" />
+                      <Label htmlFor="non-resident" className="cursor-pointer">비거주자</Label>
+                    </div>
+                  </RadioGroup>
+                  {formData.residenceType === 'non-resident' && (
+                    <Select
+                      value={formData.residenceCountry}
+                      onValueChange={(value) => handleChange('residenceCountry', value)}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="거주지국 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.map((country) => (
+                          <SelectItem key={country.code} value={country.code}>
+                            {country.nameKo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
 
               {/* 장애여부 */}
@@ -1179,22 +1206,6 @@ export function EditPersonalInfoDialog({
                 </Select>
               </div>
 
-              {/* 이메일 */}
-              <div className="space-y-2">
-                <Label htmlFor="email">
-                  이메일 <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
-                  onBlur={handleEmailBlur}
-                  placeholder="이메일을 입력하세요"
-                />
-                {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email}</p>}
-              </div>
-
               {/* 연락처 */}
               <div className="space-y-2">
                 <Label htmlFor="contact">연락처</Label>
@@ -1217,9 +1228,7 @@ export function EditPersonalInfoDialog({
                     onChange={(e) => {
                       const value = e.target.value;
                       handlePhoneChange('phone1', value);
-                      if (value.length === 3) {
-                        phone2Ref.current?.focus();
-                      }
+                      if (value.length === 3) phone2Ref.current?.focus();
                     }}
                     maxLength={3}
                     placeholder="010"
@@ -1232,9 +1241,7 @@ export function EditPersonalInfoDialog({
                     onChange={(e) => {
                       const value = e.target.value;
                       handlePhoneChange('phone2', value);
-                      if (value.length === 4) {
-                        phone3Ref.current?.focus();
-                      }
+                      if (value.length === 4) phone3Ref.current?.focus();
                     }}
                     maxLength={4}
                     placeholder="1234"
@@ -1291,14 +1298,12 @@ export function EditPersonalInfoDialog({
               <div className="col-span-2 space-y-2">
                 <Label>주소</Label>
                 <div className="grid grid-cols-2 gap-x-6">
-                  {/* 1열: 우편번호 + 주소검색 */}
                   <div className="flex gap-2">
                     <Input value={formData.zipCode} readOnly placeholder="우편번호" className="flex-1" />
                     <Button type="button" onClick={() => setAddressDialogOpen(true)}>
                       주소 검색
                     </Button>
                   </div>
-                  {/* 2열: 주소 */}
                   <Input value={formData.address} readOnly placeholder="주소" />
                 </div>
                 <Input

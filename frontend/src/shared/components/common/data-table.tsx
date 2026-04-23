@@ -39,6 +39,9 @@ interface DataTableProps<TData, TValue> {
   rowSelection?: Record<string, boolean>;
   onRowSelectionChange?: (selection: Record<string, boolean>) => void;
   getRowId?: (row: TData) => string;
+  rowLabel?: string;
+  customTotalLabel?: string;
+  noBorder?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -56,6 +59,9 @@ export function DataTable<TData, TValue>({
   rowSelection: externalRowSelection,
   onRowSelectionChange,
   getRowId,
+  rowLabel,
+  customTotalLabel,
+  noBorder = false,
 }: DataTableProps<TData, TValue>): JSX.Element {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -144,13 +150,14 @@ export function DataTable<TData, TValue>({
 
   // 무한 스크롤 컨테이너의 스타일 계산
   const getScrollContainerStyle = (): string => {
-    if (!enableInfiniteScroll) return 'rounded-md border overflow-x-auto';
+    const borderClass = noBorder ? '' : 'rounded-md border';
+    if (!enableInfiniteScroll) return `${borderClass} overflow-x-auto`.trim();
 
     if (maxHeight === 'full' || maxHeight === 'none') {
-      return 'rounded-md border overflow-x-auto h-full overflow-y-auto';
+      return `${borderClass} overflow-x-auto h-full overflow-y-auto`.trim();
     }
 
-    return `rounded-md border overflow-x-auto overflow-y-auto`;
+    return `${borderClass} overflow-x-auto overflow-y-auto`.trim();
   };
 
   const getScrollContainerInlineStyle = (): React.CSSProperties => {
@@ -178,7 +185,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
-                      className={isPinned ? 'bg-white' : ''}
+                      className={isPinned ? 'bg-gray-50' : ''}
                       style={{
                         position: isPinned ? 'sticky' : 'relative',
                         left: isPinned === 'left' ? `${header.column.getStart('left')}px` : undefined,
@@ -248,7 +255,11 @@ export function DataTable<TData, TValue>({
         )}
       </div>
 
-      {!enableInfiniteScroll && <DataTablePagination table={table} />}
+      {!enableInfiniteScroll && (
+        <div className="sticky bottom-0 bg-white border-t px-2 py-3 z-10">
+          <DataTablePagination table={table} rowLabel={rowLabel} customTotalLabel={customTotalLabel} />
+        </div>
+      )}
     </div>
   );
 }

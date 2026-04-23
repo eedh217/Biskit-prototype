@@ -438,7 +438,7 @@ export function VacationTypeManagement(): JSX.Element {
         <div className="w-96 bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col">
           <CardContent className="pt-6 flex-1 overflow-auto">
             <div className="flex items-center justify-between mb-4">
-              <div className="text-sm text-gray-600">총 {vacationTypes.length}개</div>
+
               <Button onClick={handleAdd} size="sm">
                 <Plus className="h-4 w-4 mr-1" />
                 추가하기

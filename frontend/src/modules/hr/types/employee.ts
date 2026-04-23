@@ -5,6 +5,8 @@ export interface PayrollTemplateItem {
   itemName: string; // "급여", "식대"
   amount: number; // 3000000
   category: 'taxable' | 'non-taxable';
+  includeInAnnual?: boolean; // 연봉 포함 여부
+  paymentMonths?: number[]; // 비정기지급이고 회사 미설정 시 직원별 지급월 (1-12)
 }
 
 export interface Employee {
@@ -19,6 +21,7 @@ export interface Employee {
   gender: 'male' | 'female' | null; // 성별 - 여권 선택 시
   nationality: string | null; // 국적 (ISO 국가 코드) - 외국인 시
   residenceType: 'resident' | 'non-resident'; // 거주구분
+  residenceCountry: string | null; // 거주지국 (비거주자인 경우)
   disabilityType: 'none' | 'disabled' | 'veteran' | 'severe'; // 장애여부
   email: string; // 이메일
   contact: string | null; // 연락처 (선택)
@@ -57,6 +60,7 @@ export interface CreateEmployeeDto {
   gender?: 'male' | 'female' | null;
   nationality?: string | null;
   residenceType: 'resident' | 'non-resident';
+  residenceCountry?: string | null;
   disabilityType: 'none' | 'disabled' | 'veteran' | 'severe';
   email: string;
   contact?: string | null;
@@ -88,6 +92,7 @@ export interface UpdateEmployeeDto {
   gender?: 'male' | 'female' | null;
   nationality?: string | null;
   residenceType?: 'resident' | 'non-resident';
+  residenceCountry?: string | null;
   disabilityType?: 'none' | 'disabled' | 'veteran' | 'severe';
   email?: string;
   contact?: string | null;

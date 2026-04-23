@@ -13,7 +13,8 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { Trash2, Plus, AlertCircle } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
+import { Trash2, Plus, ArrowDown, ArrowUp } from 'lucide-react';
 import { AddressSearchDialog } from '../components/AddressSearchDialog';
 import { employeeService } from '../services/employeeService';
 import { organizationService } from '../services/organizationService';
@@ -25,8 +26,8 @@ import type { JobLevel } from '../types/jobLevel';
 import type { EmploymentType } from '../types/employmentType';
 import { COUNTRIES } from '@/shared/constants/countries';
 import { BANKS } from '@/shared/constants/banks';
-import { PAYROLL_ITEMS_2026 } from '@/modules/payroll/constants/payrollItems2026';
-import { PayrollItemCombobox } from '@/modules/payroll/components/PayrollItemCombobox';
+import { companyPayrollItemService } from '@/modules/payroll/services/companyPayrollItemService';
+import { CompanyPayItemCombobox } from '@/modules/payroll/components/CompanyPayItemCombobox';
 import {
   isValidDate,
   isValidResidentRegistrationNumber,
@@ -53,6 +54,7 @@ interface FormData {
   gender: 'male' | 'female' | '';
   nationality: string;
   residenceType: 'resident' | 'non-resident';
+  residenceCountry: string;
   disabilityType: 'none' | 'disabled' | 'veteran' | 'severe';
   email: string;
   contact: string;
@@ -68,7 +70,6 @@ interface FormData {
   position: string;
   employmentTypeId: string;
   isDepartmentHead: boolean;
-  annualSalary: string; // 연봉 (입력용 문자열)
   payrollTemplate: PayrollTemplateItem[];
   bankName: string;
   accountHolder: string;
@@ -78,6 +79,7 @@ interface FormData {
 interface FormErrors {
   employeeNumber?: string;
   name?: string;
+  residenceCountry?: string;
   residentRegistrationNumber?: string;
   foreignerRegistrationNumber?: string;
   passportNumber?: string;
@@ -114,6 +116,9 @@ const isTodayOrAfter = (dateStr: string): boolean => {
 };
 
 export function AddEmployee(): JSX.Element {
+  const currentYear = Math.max(2026, new Date().getFullYear());
+  const [companyItems] = useState(() => companyPayrollItemService.getPayItems(currentYear).filter((item) => !item.isDeprecated));
+
   const [isComposing, setIsComposing] = useState(false);
   const [isModified, setIsModified] = useState(false);
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
@@ -133,6 +138,7 @@ export function AddEmployee(): JSX.Element {
     gender: '',
     nationality: '',
     residenceType: 'resident',
+    residenceCountry: '',
     disabilityType: 'none',
     email: '',
     contact: '',
@@ -148,7 +154,6 @@ export function AddEmployee(): JSX.Element {
     position: '',
     employmentTypeId: '',
     isDepartmentHead: false,
-    annualSalary: '',
     payrollTemplate: [
       {
         itemId: '',
@@ -156,6 +161,7 @@ export function AddEmployee(): JSX.Element {
         itemName: '',
         amount: 0,
         category: 'taxable' as const,
+        includeInAnnual: true,
       },
     ],
     bankName: '',
@@ -450,7 +456,7 @@ export function AddEmployee(): JSX.Element {
   };
 
   // 급여항목 추가
-  const handleAddPayrollItem = (): void => {
+  const handleAddPayrollItem = (includeInAnnual: boolean): void => {
     setFormData((prev) => ({
       ...prev,
       payrollTemplate: [
@@ -461,10 +467,48 @@ export function AddEmployee(): JSX.Element {
           itemName: '',
           amount: 0,
           category: 'taxable' as const,
+          includeInAnnual,
         },
       ],
     }));
   };
+
+  // 연봉포함/미포함 이동
+  const handleMoveToNotAnnual = (itemId: string): void => {
+    setFormData((prev) => ({
+      ...prev,
+      payrollTemplate: prev.payrollTemplate.map((t) =>
+        t.itemId === itemId ? { ...t, includeInAnnual: false } : t
+      ),
+    }));
+  };
+
+  const handleMoveToAnnual = (itemId: string): void => {
+    setFormData((prev) => ({
+      ...prev,
+      payrollTemplate: prev.payrollTemplate.map((t) =>
+        t.itemId === itemId ? { ...t, includeInAnnual: true } : t
+      ),
+    }));
+  };
+
+  // 지급월 변경 (비정기 + 회사 미설정 시)
+  const handlePaymentMonthChange = (index: number, month: number, checked: boolean): void => {
+    setFormData((prev) => {
+      const newTemplate = [...prev.payrollTemplate];
+      const item = newTemplate[index]!;
+      const months = item.paymentMonths ?? [];
+      newTemplate[index] = {
+        ...item,
+        paymentMonths: checked
+          ? [...months, month].sort((a, b) => a - b)
+          : months.filter((m) => m !== month),
+      };
+      return { ...prev, payrollTemplate: newTemplate };
+    });
+  };
+
+
 
   // 급여항목 삭제
   const handleRemovePayrollItem = (index: number): void => {
@@ -476,24 +520,19 @@ export function AddEmployee(): JSX.Element {
 
   // 급여항목 선택 변경
   const handlePayrollItemChange = (index: number, itemId: string): void => {
-    const allItems = [
-      ...PAYROLL_ITEMS_2026.taxableItems,
-      ...PAYROLL_ITEMS_2026.nonTaxableItems,
-    ];
-    const selectedItem = allItems.find((item) => item.id === itemId);
-
-    if (selectedItem) {
+    const companyItem = companyItems.find((pi) => pi.id === itemId);
+    if (companyItem) {
       setFormData((prev) => {
         const newTemplate = [...prev.payrollTemplate];
-        const currentAmount = newTemplate[index]?.amount ?? 0; // 기존 금액 유지
+        const current = newTemplate[index];
         newTemplate[index] = {
-          itemId: selectedItem.id,
-          itemCode: selectedItem.category === 'taxable'
-            ? selectedItem.name
-            : (selectedItem as { code: string }).code,
-          itemName: selectedItem.name,
-          amount: currentAmount,
-          category: selectedItem.category,
+          itemId: companyItem.id,
+          itemCode: companyItem.taxItemId,
+          itemName: companyItem.name,
+          amount: current?.amount ?? 0,
+          category: companyItem.taxItemCategory,
+          includeInAnnual: current?.includeInAnnual ?? false,
+          paymentMonths: [],
         };
         return { ...prev, payrollTemplate: newTemplate };
       });
@@ -513,30 +552,6 @@ export function AddEmployee(): JSX.Element {
         };
       }
       return { ...prev, payrollTemplate: newTemplate };
-    });
-  };
-
-  // 연봉 입력 핸들러
-  const handleAnnualSalaryChange = (value: string): void => {
-    const formatted = formatNumberInput(value);
-    setFormData((prev) => {
-      const numericValue = parseFormattedNumber(formatted);
-
-      // "급여" 항목 찾기
-      const salaryIndex = prev.payrollTemplate.findIndex(item => item.itemName === '급여');
-
-      // 연봉이 입력되고 "급여" 항목이 있으면 자동 계산
-      if (numericValue > 0 && salaryIndex !== -1) {
-        const monthlySalary = Math.round(numericValue / 12);
-        const newTemplate = [...prev.payrollTemplate];
-        newTemplate[salaryIndex] = {
-          ...newTemplate[salaryIndex]!,
-          amount: monthlySalary,
-        };
-        return { ...prev, annualSalary: formatted, payrollTemplate: newTemplate };
-      }
-
-      return { ...prev, annualSalary: formatted };
     });
   };
 
@@ -711,6 +726,11 @@ export function AddEmployee(): JSX.Element {
       }
     }
 
+    // 비거주자: 거주지국 필수
+    if (formData.residenceType === 'non-resident' && !formData.residenceCountry) {
+      return false;
+    }
+
     // 에러가 있으면 invalid
     if (Object.keys(errors).length > 0) {
       return false;
@@ -720,6 +740,20 @@ export function AddEmployee(): JSX.Element {
   };
 
   const handleSubmit = async (): Promise<void> => {
+    // 비정기지급 항목의 지급월 미선택 검증
+    for (const item of formData.payrollTemplate) {
+      if (!item.itemId) continue;
+      const companyItem = companyItems.find((ci) => ci.id === item.itemId);
+      if (
+        companyItem?.paymentType === 'irregular' &&
+        (companyItem.paymentMonths?.length ?? 0) === 0 &&
+        (item.paymentMonths?.length ?? 0) === 0
+      ) {
+        alert(`${item.itemName} 항목의 지급월을 선택해주세요.`);
+        return;
+      }
+    }
+
     let finalIsDepartmentHead = formData.isDepartmentHead;
 
     // 퇴사일(오늘 이후) + 부서장 체크 시 Confirm 팝업
@@ -822,6 +856,7 @@ export function AddEmployee(): JSX.Element {
             : null,
         nationality: formData.nationality || null,
         residenceType: formData.residenceType,
+        residenceCountry: formData.residenceType === 'non-resident' ? (formData.residenceCountry || null) : null,
         disabilityType: formData.disabilityType,
         email: formData.email,
         contact: formData.contact || null,
@@ -838,7 +873,14 @@ export function AddEmployee(): JSX.Element {
         position: formData.position || null,
         employmentTypeId: formData.employmentTypeId || null,
         isDepartmentHead: finalIsDepartmentHead,
-        annualSalary: parseFormattedNumber(formData.annualSalary) || null,
+        annualSalary: validPayrollTemplate.filter((t) => t.includeInAnnual).reduce((sum, t) => {
+          const ci = companyItems.find((c) => c.id === t.itemId);
+          const isIrregular = ci?.paymentType === 'irregular';
+          const months = isIrregular
+            ? ((ci?.paymentMonths?.length ?? 0) > 0 ? ci!.paymentMonths! : (t.paymentMonths ?? [])).length
+            : 12;
+          return sum + t.amount * months;
+        }, 0) || null,
         payrollTemplate: validPayrollTemplate,
         bankName: formData.bankName || null,
         accountHolder: formData.accountHolder || null,
@@ -876,7 +918,7 @@ export function AddEmployee(): JSX.Element {
             <CardTitle className="text-lg">개인정보</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+            <div className="grid grid-cols-3 gap-x-6 gap-y-4">
               {/* 사번 */}
               <div className="space-y-2">
                 <Label htmlFor="employeeNumber">
@@ -913,31 +955,68 @@ export function AddEmployee(): JSX.Element {
                 {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
               </div>
 
+              {/* 이메일 */}
+              <div className="space-y-2">
+                <Label htmlFor="email">
+                  이메일 <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  onBlur={handleEmailBlur}
+                  placeholder="이메일을 입력하세요"
+                />
+                {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email}</p>}
+              </div>
+
               {/* 내외국인 여부 */}
-              <div className="col-span-2 space-y-2">
+              <div className="space-y-2">
                 <Label>
                   내외국인 여부 <span className="text-red-500">*</span>
                 </Label>
-                <RadioGroup
-                  value={formData.nationalityType}
-                  onValueChange={(value: 'domestic' | 'foreign') =>
-                    handleChange('nationalityType', value)
-                  }
-                  className="h-10 flex items-center gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="domestic" id="domestic" />
-                    <Label htmlFor="domestic" className="cursor-pointer">
-                      내국인
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="foreign" id="foreign" />
-                    <Label htmlFor="foreign" className="cursor-pointer">
-                      외국인
-                    </Label>
-                  </div>
-                </RadioGroup>
+                <div className="flex items-center gap-4 h-10">
+                  <RadioGroup
+                    value={formData.nationalityType}
+                    onValueChange={(value: 'domestic' | 'foreign') =>
+                      handleChange('nationalityType', value)
+                    }
+                    className="flex items-center gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="domestic" id="domestic" />
+                      <Label htmlFor="domestic" className="cursor-pointer">
+                        내국인
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="foreign" id="foreign" />
+                      <Label htmlFor="foreign" className="cursor-pointer">
+                        외국인
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  {formData.nationalityType === 'foreign' && (
+                    <Select
+                      value={formData.foreignerIdType}
+                      onValueChange={(value: 'foreigner' | 'passport') => {
+                        handleChange('foreignerIdType', value);
+                        if (value === 'passport') {
+                          handleChange('gender', 'male');
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="foreigner">외국인등록번호</SelectItem>
+                        <SelectItem value="passport">여권번호</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
 
               {/* 내국인 - 주민등록번호 */}
@@ -983,40 +1062,9 @@ export function AddEmployee(): JSX.Element {
                 </div>
               )}
 
-              {/* 외국인 - 신분증 선택 및 입력 */}
+              {/* 외국인 - 신분증 입력 */}
               {formData.nationalityType === 'foreign' && (
                 <>
-                  {/* 신분증 타입 선택 */}
-                  <div className="col-span-2 space-y-2">
-                    <Label>
-                      신분증 선택 <span className="text-red-500">*</span>
-                    </Label>
-                    <RadioGroup
-                      value={formData.foreignerIdType}
-                      onValueChange={(value: 'foreigner' | 'passport') => {
-                        handleChange('foreignerIdType', value);
-                        // 여권번호 선택 시 성별 기본값을 '남'으로 설정
-                        if (value === 'passport') {
-                          handleChange('gender', 'male');
-                        }
-                      }}
-                      className="h-10 flex items-center gap-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="foreigner" id="id-foreigner" />
-                        <Label htmlFor="id-foreigner" className="cursor-pointer">
-                          외국인등록번호
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="passport" id="id-passport" />
-                        <Label htmlFor="id-passport" className="cursor-pointer">
-                          여권번호
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
                   {/* 외국인등록번호 입력 */}
                   {formData.foreignerIdType === 'foreigner' && (
                     <>
@@ -1168,77 +1216,52 @@ export function AddEmployee(): JSX.Element {
                 </>
               )}
 
-              {/* 거주구분 */}
-              <div className="col-span-2 space-y-2">
+              {/* 거주구분 | 연락처 | 휴대폰번호 */}
+              <div className="space-y-2">
                 <Label>
                   거주구분 <span className="text-red-500">*</span>
                 </Label>
-                <RadioGroup
-                  value={formData.residenceType}
-                  onValueChange={(value: 'resident' | 'non-resident') =>
-                    handleChange('residenceType', value)
-                  }
-                  className="h-10 flex items-center gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="resident" id="resident" />
-                    <Label htmlFor="resident" className="cursor-pointer">
-                      거주자
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="non-resident" id="non-resident" />
-                    <Label htmlFor="non-resident" className="cursor-pointer">
-                      비거주자
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* 장애여부 */}
-              <div className="space-y-2">
-                <Label htmlFor="disabilityType">
-                  장애여부 <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.disabilityType}
-                  onValueChange={(
-                    value: 'none' | 'disabled' | 'veteran' | 'severe'
-                  ) => handleChange('disabilityType', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">비장애인</SelectItem>
-                    <SelectItem value="disabled">장애인복지법상 장애인</SelectItem>
-                    <SelectItem value="veteran">국가유공자 중증환자</SelectItem>
-                    <SelectItem value="severe">중증환자</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* 이메일 */}
-              <div className="space-y-2">
-                <Label htmlFor="email">
-                  이메일 <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
-                  onBlur={handleEmailBlur}
-                  placeholder="이메일을 입력하세요"
-                />
-                {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email}</p>}
+                <div className="flex items-center gap-4 h-10">
+                  <RadioGroup
+                    value={formData.residenceType}
+                    onValueChange={(value: 'resident' | 'non-resident') => {
+                      handleChange('residenceType', value);
+                      if (value === 'resident') handleChange('residenceCountry', '');
+                    }}
+                    className="flex items-center gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="resident" id="resident" />
+                      <Label htmlFor="resident" className="cursor-pointer">거주자</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="non-resident" id="non-resident" />
+                      <Label htmlFor="non-resident" className="cursor-pointer">비거주자</Label>
+                    </div>
+                  </RadioGroup>
+                  {formData.residenceType === 'non-resident' && (
+                    <Select
+                      value={formData.residenceCountry}
+                      onValueChange={(value) => handleChange('residenceCountry', value)}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="거주지국 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COUNTRIES.map((country) => (
+                          <SelectItem key={country.code} value={country.code}>
+                            {country.nameKo}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
               </div>
 
               {/* 연락처 */}
               <div className="space-y-2">
-                <Label htmlFor="contact">
-                  연락처
-                </Label>
+                <Label htmlFor="contact">연락처</Label>
                 <Input
                   id="contact"
                   value={formData.contact}
@@ -1251,18 +1274,14 @@ export function AddEmployee(): JSX.Element {
 
               {/* 휴대폰번호 */}
               <div className="space-y-2">
-                <Label>
-                  휴대폰번호
-                </Label>
+                <Label>휴대폰번호</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     value={formData.phone1}
                     onChange={(e) => {
                       const value = e.target.value;
                       handlePhoneChange('phone1', value);
-                      if (value.length === 3) {
-                        phone2Ref.current?.focus();
-                      }
+                      if (value.length === 3) phone2Ref.current?.focus();
                     }}
                     maxLength={3}
                     placeholder="010"
@@ -1275,9 +1294,7 @@ export function AddEmployee(): JSX.Element {
                     onChange={(e) => {
                       const value = e.target.value;
                       handlePhoneChange('phone2', value);
-                      if (value.length === 4) {
-                        phone3Ref.current?.focus();
-                      }
+                      if (value.length === 4) phone3Ref.current?.focus();
                     }}
                     maxLength={4}
                     placeholder="1234"
@@ -1296,7 +1313,29 @@ export function AddEmployee(): JSX.Element {
                 {errors.phone && <p className="text-sm text-red-500 mt-1">{errors.phone}</p>}
               </div>
 
-              {/* 입사일 */}
+              {/* 장애여부 | 입사일 | 퇴사일 */}
+              <div className="space-y-2">
+                <Label htmlFor="disabilityType">
+                  장애여부 <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.disabilityType}
+                  onValueChange={(value: 'none' | 'disabled' | 'veteran' | 'severe') =>
+                    handleChange('disabilityType', value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">비장애인</SelectItem>
+                    <SelectItem value="disabled">장애인복지법상 장애인</SelectItem>
+                    <SelectItem value="veteran">국가유공자 중증환자</SelectItem>
+                    <SelectItem value="severe">중증환자</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="joinDate">
                   입사일 <span className="text-red-500">*</span>
@@ -1314,11 +1353,8 @@ export function AddEmployee(): JSX.Element {
                 )}
               </div>
 
-              {/* 퇴사일 */}
               <div className="space-y-2">
-                <Label htmlFor="leaveDate">
-                  퇴사일
-                </Label>
+                <Label htmlFor="leaveDate">퇴사일</Label>
                 <Input
                   id="leaveDate"
                   value={formData.leaveDate}
@@ -1333,19 +1369,24 @@ export function AddEmployee(): JSX.Element {
               </div>
 
               {/* 주소 */}
-              <div className="col-span-2 space-y-2">
+              {/* 1열: 우편번호 + 주소검색 */}
+              <div className="space-y-2">
                 <Label>주소</Label>
-                <div className="grid grid-cols-2 gap-x-6">
-                  {/* 1열: 우편번호 + 주소검색 */}
-                  <div className="flex gap-2">
-                    <Input value={formData.zipCode} readOnly placeholder="우편번호" className="flex-1" />
-                    <Button type="button" onClick={() => setAddressDialogOpen(true)}>
-                      주소 검색
-                    </Button>
-                  </div>
-                  {/* 2열: 주소 */}
-                  <Input value={formData.address} readOnly placeholder="주소" />
+                <div className="flex gap-2">
+                  <Input value={formData.zipCode} readOnly placeholder="우편번호" className="flex-1" />
+                  <Button type="button" onClick={() => setAddressDialogOpen(true)}>
+                    주소 검색
+                  </Button>
                 </div>
+              </div>
+              {/* 2열: 주소 */}
+              <div className="space-y-2">
+                <Label>&nbsp;</Label>
+                <Input value={formData.address} readOnly placeholder="주소" />
+              </div>
+              {/* 3열: 상세주소 */}
+              <div className="space-y-2">
+                <Label>&nbsp;</Label>
                 <Input
                   ref={detailAddressRef}
                   value={formData.detailAddress}
@@ -1366,12 +1407,10 @@ export function AddEmployee(): JSX.Element {
             <div className="mb-4 text-sm text-gray-600">
               ※ 조직관리 메뉴에서 부서, 직급, 근로형태를 관리할 수 있습니다.
             </div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+            <div className="grid grid-cols-3 gap-x-6 gap-y-4">
               {/* 부서 */}
               <div className="space-y-2">
-                <Label htmlFor="department">
-                  부서
-                </Label>
+                <Label htmlFor="department">부서</Label>
                 <Select
                   value={formData.departmentId}
                   onValueChange={(value) => {
@@ -1393,12 +1432,8 @@ export function AddEmployee(): JSX.Element {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* 부서장 체크박스 */}
-              <div className="space-y-2">
-                <Label className="invisible">부서장</Label>
-                <div className="flex items-center space-x-2 h-10">
+                {/* 부서장 체크박스 */}
+                <div className="flex items-center space-x-2 h-6">
                   <Checkbox
                     id="isDepartmentHead"
                     checked={formData.isDepartmentHead}
@@ -1410,15 +1445,13 @@ export function AddEmployee(): JSX.Element {
                   </Label>
                 </div>
                 {errors.isDepartmentHead && (
-                  <p className="text-sm text-red-500 mt-1">{errors.isDepartmentHead}</p>
+                  <p className="text-sm text-red-500">{errors.isDepartmentHead}</p>
                 )}
               </div>
 
               {/* 직급 */}
               <div className="space-y-2">
-                <Label htmlFor="position">
-                  직급
-                </Label>
+                <Label htmlFor="position">직급</Label>
                 <Select
                   value={formData.position}
                   onValueChange={(value) => handleChange('position', value)}
@@ -1438,9 +1471,7 @@ export function AddEmployee(): JSX.Element {
 
               {/* 근로형태 */}
               <div className="space-y-2">
-                <Label htmlFor="employmentType">
-                  근로형태
-                </Label>
+                <Label htmlFor="employmentType">근로형태</Label>
                 <Select
                   value={formData.employmentTypeId}
                   onValueChange={(value) => handleChange('employmentTypeId', value)}
@@ -1468,108 +1499,163 @@ export function AddEmployee(): JSX.Element {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* 연봉 */}
-              <div className="space-y-2">
-                <Label>연봉</Label>
-                <Input
-                  type="text"
-                  value={formData.annualSalary}
-                  onChange={(e) => handleAnnualSalaryChange(e.target.value)}
-                  placeholder="연봉을 입력하세요"
-                />
-              </div>
-
-              {/* 불일치 경고 */}
+              {/* 급여항목 템플릿 - 연봉 포함 / 미포함 두 섹션 */}
               {(() => {
-                const annualSalaryNum = parseFormattedNumber(formData.annualSalary);
-                const salaryItem = formData.payrollTemplate.find(item => item.itemName === '급여');
-                const monthlySalary = salaryItem?.amount ?? 0;
-                const isInconsistent = annualSalaryNum > 0 && monthlySalary > 0 && (monthlySalary * 12 !== annualSalaryNum);
+                const calcAnnual = (): number =>
+                  formData.payrollTemplate
+                    .filter((t) => t.includeInAnnual)
+                    .reduce((sum, t) => {
+                      const ci = companyItems.find((c) => c.id === t.itemId);
+                      const isIrregular = ci?.paymentType === 'irregular';
+                      const months = isIrregular
+                        ? ((ci?.paymentMonths?.length ?? 0) > 0 ? ci!.paymentMonths! : (t.paymentMonths ?? [])).length
+                        : 12;
+                      return sum + t.amount * months;
+                    }, 0);
 
-                if (isInconsistent) {
+                const renderPayItem = (item: PayrollTemplateItem, index: number, isAnnual: boolean): JSX.Element => {
+                  const ci = companyItems.find((c) => c.id === item.itemId);
                   return (
-                    <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-md border border-amber-200">
-                      <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                      <span>
-                        연봉({formatNumberInput(annualSalaryNum.toString())}원)과 월 급여({formatNumberInput(monthlySalary.toString())}원 × 12 = {formatNumberInput((monthlySalary * 12).toString())}원)가 일치하지 않습니다.
-                      </span>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-
-              {/* 급여항목 템플릿 */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>급여항목</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddPayrollItem}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    급여항목 추가
-                  </Button>
-                </div>
-
-                {formData.payrollTemplate.length === 0 && (
-                  <div className="text-sm text-gray-500 py-4 text-center border border-dashed rounded-md">
-                    급여항목을 추가해주세요
-                  </div>
-                )}
-
-                {formData.payrollTemplate.map((item, index) => (
-                  <div key={index} className="grid grid-cols-2 gap-x-6">
-                    {/* 1열: 급여항목 선택 */}
-                    <PayrollItemCombobox
-                      value={item.itemId}
-                      onChange={(value) => {
-                        handlePayrollItemChange(index, value);
-                        // 에러 초기화
-                        if (payrollErrors[index]?.itemId) {
-                          const newErrors = [...payrollErrors];
-                          newErrors[index] = { ...newErrors[index]!, itemId: false };
-                          setPayrollErrors(newErrors);
-                        }
-                      }}
-                      error={payrollErrors[index]?.itemId}
-                    />
-
-                    {/* 2열: 금액 입력 + 삭제 버튼 */}
-                    <div className="flex gap-2">
-                      <Input
-                        value={item.amount > 0 ? formatNumberInput(item.amount.toString()) : ''}
-                        onChange={(e) => {
-                          handlePayrollAmountChange(index, e.target.value);
-                          // 에러 초기화
-                          if (payrollErrors[index]?.amount) {
+                    <div key={index} className="grid grid-cols-[1fr_1fr_auto_auto] gap-x-2 items-start">
+                      <CompanyPayItemCombobox
+                        value={item.itemId}
+                        items={companyItems}
+                        onChange={(value) => {
+                          handlePayrollItemChange(index, value);
+                          if (payrollErrors[index]?.itemId) {
                             const newErrors = [...payrollErrors];
-                            newErrors[index] = { ...newErrors[index]!, amount: false };
+                            newErrors[index] = { ...newErrors[index]!, itemId: false };
                             setPayrollErrors(newErrors);
                           }
                         }}
-                        placeholder="금액 입력"
-                        className={`flex-1 ${payrollErrors[index]?.amount ? 'border-red-500' : ''}`}
+                        error={payrollErrors[index]?.itemId}
                       />
+                      <div className="space-y-1">
+                        <Input
+                          value={item.amount > 0 ? formatNumberInput(item.amount.toString()) : ''}
+                          onChange={(e) => {
+                            handlePayrollAmountChange(index, e.target.value);
+                            if (payrollErrors[index]?.amount) {
+                              const newErrors = [...payrollErrors];
+                              newErrors[index] = { ...newErrors[index]!, amount: false };
+                              setPayrollErrors(newErrors);
+                            }
+                          }}
+                          placeholder="금액 입력"
+                          className={payrollErrors[index]?.amount ? 'border-red-500' : ''}
+                        />
+                        {ci?.paymentType === 'irregular' && (
+                          (ci.paymentMonths?.length ?? 0) > 0 ? (
+                            <Button type="button" variant="outline" size="sm" className="h-8 w-full text-sm" disabled>
+                              {ci.paymentMonths!.sort((a, b) => a - b).join(', ')}월 (회사 설정)
+                            </Button>
+                          ) : (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button type="button" variant="outline" size="sm" className="h-8 w-full text-sm">
+                                  {(item.paymentMonths ?? []).length === 0
+                                    ? '지급월 선택'
+                                    : (item.paymentMonths ?? []).sort((a, b) => a - b).join(', ') + '월'}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-44 p-1" align="start">
+                                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                                  <label key={m} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-100 cursor-pointer">
+                                    <Checkbox
+                                      checked={(item.paymentMonths ?? []).includes(m)}
+                                      onChange={(e) => handlePaymentMonthChange(index, m, e.target.checked)}
+                                    />
+                                    <span className="text-sm">{m}월</span>
+                                  </label>
+                                ))}
+                              </PopoverContent>
+                            </Popover>
+                          )
+                        )}
+                      </div>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleRemovePayrollItem(index)}
-                        className="h-10 w-10"
+                        className="h-10 w-10 shrink-0"
+                        title={isAnnual ? '연봉 미포함으로 이동' : '연봉 포함으로 이동'}
+                        onClick={() => isAnnual ? handleMoveToNotAnnual(item.itemId) : handleMoveToAnnual(item.itemId)}
+                        disabled={!item.itemId}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {isAnnual ? <ArrowDown className="h-4 w-4 text-gray-400" /> : <ArrowUp className="h-4 w-4 text-gray-400" />}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 shrink-0"
+                        onClick={() => handleRemovePayrollItem(index)}
+                      >
+                        <Trash2 className="h-4 w-4 text-gray-400" />
                       </Button>
                     </div>
+                  );
+                };
+
+                const inAnnual = formData.payrollTemplate.filter((t) => t.includeInAnnual);
+                const notInAnnual = formData.payrollTemplate.filter((t) => !t.includeInAnnual);
+                const annual = calcAnnual();
+
+                return (
+                  <div className="space-y-3">
+                    {/* 연봉 포함 섹션 */}
+                    <div className="rounded-lg border border-slate-200 overflow-hidden">
+                      <div className="flex items-center justify-between bg-slate-50 px-4 py-2 border-b border-slate-200">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-slate-600">연봉 포함</span>
+                          <span className="text-sm text-slate-500">
+                            {annual > 0 ? `${formatNumberInput(annual.toString())}원` : '-'}
+                          </span>
+                        </div>
+                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleAddPayrollItem(true)}>
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          항목 추가
+                        </Button>
+                      </div>
+                      <div className="px-4 py-3 space-y-3">
+                        {inAnnual.length === 0 ? (
+                          <p className="text-sm text-gray-400 text-center py-2">항목이 없습니다.</p>
+                        ) : (
+                          inAnnual.map((item) => {
+                            const globalIndex = formData.payrollTemplate.indexOf(item);
+                            return renderPayItem(item, globalIndex, true);
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 연봉 미포함 섹션 */}
+                    <div className="rounded-lg border border-slate-200 overflow-hidden">
+                      <div className="flex items-center justify-between bg-slate-50 px-4 py-2 border-b border-slate-200">
+                        <span className="text-sm font-semibold text-slate-500">연봉 미포함</span>
+                        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleAddPayrollItem(false)}>
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          항목 추가
+                        </Button>
+                      </div>
+                      <div className="px-4 py-3 space-y-3">
+                        {notInAnnual.length === 0 ? (
+                          <p className="text-sm text-gray-400 text-center py-2">항목이 없습니다.</p>
+                        ) : (
+                          notInAnnual.map((item) => {
+                            const globalIndex = formData.payrollTemplate.indexOf(item);
+                            return renderPayItem(item, globalIndex, false);
+                          })
+                        )}
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
+                );
+              })()}
 
               {/* 계좌정보 */}
               <div className="pt-4 border-t">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                <div className="grid grid-cols-3 gap-x-6 gap-y-4">
                   {/* 은행 */}
                   <div className="space-y-2">
                     <Label>은행</Label>
@@ -1603,7 +1689,7 @@ export function AddEmployee(): JSX.Element {
                   </div>
 
                   {/* 계좌번호 */}
-                  <div className="col-span-2 space-y-2">
+                  <div className="space-y-2">
                     <Label>계좌번호</Label>
                     <Input
                       value={formData.accountNumber}

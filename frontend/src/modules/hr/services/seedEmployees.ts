@@ -4,6 +4,7 @@ import { jobLevelService } from './jobLevelService';
 import { employmentTypeService } from './employmentTypeService';
 import type { CreateEmployeeDto, PayrollTemplateItem } from '../types/employee';
 import { BANKS } from '@/shared/constants/banks';
+import { companyPayrollItemService } from '@/modules/payroll/services/companyPayrollItemService';
 
 // 한국식 성씨
 const lastNames = ['김', '이', '박', '최', '정', '강', '조', '윤', '장', '임', '한', '오', '서', '신', '권', '황', '안', '송', '류', '전'];
@@ -55,181 +56,36 @@ function getRandomAccountNumber(): string {
   return `${part1}-${part2}-${part3}`;
 }
 
-// 랜덤 급여 템플릿 생성 (다양한 패턴)
-function getRandomPayrollTemplate(): PayrollTemplateItem[] {
-  const templates: PayrollTemplateItem[][] = [
-    // 패턴 1: 일반 사무직 (급여 + 식대) - 가장 많음
-    [
-      {
-        itemId: 'taxable-2026-1',
-        itemCode: '급여',
-        itemName: '급여',
-        amount: 2500000 + Math.floor(Math.random() * 2500000), // 250만~500만
-        category: 'taxable',
-      },
-      {
-        itemId: 'non-taxable-2026-P01',
-        itemCode: 'P01',
-        itemName: '식대',
-        amount: 100000 + Math.floor(Math.random() * 100000), // 10만~20만
-        category: 'non-taxable',
-      },
-    ],
-    // 패턴 2: 관리자급 (급여 + 상여 + 식대)
-    [
-      {
-        itemId: 'taxable-2026-1',
-        itemCode: '급여',
-        itemName: '급여',
-        amount: 4000000 + Math.floor(Math.random() * 3000000), // 400만~700만
-        category: 'taxable',
-      },
-      {
-        itemId: 'taxable-2026-2',
-        itemCode: '상여',
-        itemName: '상여',
-        amount: 500000 + Math.floor(Math.random() * 1500000), // 50만~200만
-        category: 'taxable',
-      },
-      {
-        itemId: 'non-taxable-2026-P01',
-        itemCode: 'P01',
-        itemName: '식대',
-        amount: 200000,
-        category: 'non-taxable',
-      },
-    ],
-    // 패턴 3: 생산직 (급여 + 식대 + 자가운전보조금)
-    [
-      {
-        itemId: 'taxable-2026-1',
-        itemCode: '급여',
-        itemName: '급여',
-        amount: 2000000 + Math.floor(Math.random() * 1500000), // 200만~350만
-        category: 'taxable',
-      },
-      {
-        itemId: 'non-taxable-2026-P01',
-        itemCode: 'P01',
-        itemName: '식대',
-        amount: 150000,
-        category: 'non-taxable',
-      },
-      {
-        itemId: 'non-taxable-2026-H01',
-        itemCode: 'H01',
-        itemName: '자가운전보조금',
-        amount: 200000,
-        category: 'non-taxable',
-      },
-    ],
-    // 패턴 4: 연구직 (급여 + 연구보조비 + 식대)
-    [
-      {
-        itemId: 'taxable-2026-1',
-        itemCode: '급여',
-        itemName: '급여',
-        amount: 3500000 + Math.floor(Math.random() * 2500000), // 350만~600만
-        category: 'taxable',
-      },
-      {
-        itemId: 'non-taxable-2026-S01',
-        itemCode: 'S01',
-        itemName: '연구보조비',
-        amount: 200000,
-        category: 'non-taxable',
-      },
-      {
-        itemId: 'non-taxable-2026-P01',
-        itemCode: 'P01',
-        itemName: '식대',
-        amount: 200000,
-        category: 'non-taxable',
-      },
-    ],
-    // 패턴 5: 임원급 (급여 + 상여 + 직책수당 + 식대)
-    [
-      {
-        itemId: 'taxable-2026-1',
-        itemCode: '급여',
-        itemName: '급여',
-        amount: 7000000 + Math.floor(Math.random() * 3000000), // 700만~1000만
-        category: 'taxable',
-      },
-      {
-        itemId: 'taxable-2026-2',
-        itemCode: '상여',
-        itemName: '상여',
-        amount: 2000000 + Math.floor(Math.random() * 3000000), // 200만~500만
-        category: 'taxable',
-      },
-      {
-        itemId: 'taxable-2026-3',
-        itemCode: '수당',
-        itemName: '수당',
-        amount: 500000 + Math.floor(Math.random() * 500000), // 50만~100만
-        category: 'taxable',
-      },
-      {
-        itemId: 'non-taxable-2026-P01',
-        itemCode: 'P01',
-        itemName: '식대',
-        amount: 200000,
-        category: 'non-taxable',
-      },
-    ],
-    // 패턴 6: 계약직 (급여 + 식대)
-    [
-      {
-        itemId: 'taxable-2026-1',
-        itemCode: '급여',
-        itemName: '급여',
-        amount: 2000000 + Math.floor(Math.random() * 800000), // 200만~280만
-        category: 'taxable',
-      },
-      {
-        itemId: 'non-taxable-2026-P01',
-        itemCode: 'P01',
-        itemName: '식대',
-        amount: 100000,
-        category: 'non-taxable',
-      },
-    ],
-    // 패턴 7: 야간근무자 (급여 + 야간근로수당 + 식대)
-    [
-      {
-        itemId: 'taxable-2026-1',
-        itemCode: '급여',
-        itemName: '급여',
-        amount: 2200000 + Math.floor(Math.random() * 800000), // 220만~300만
-        category: 'taxable',
-      },
-      {
-        itemId: 'non-taxable-2026-M01',
-        itemCode: 'M01',
-        itemName: '야간근로수당',
-        amount: 240000,
-        category: 'non-taxable',
-      },
-      {
-        itemId: 'non-taxable-2026-P01',
-        itemCode: 'P01',
-        itemName: '식대',
-        amount: 150000,
-        category: 'non-taxable',
-      },
-    ],
-  ];
+function makePayItem(taxItemId: string, amount: number, includeInAnnual: boolean = true): PayrollTemplateItem | null {
+  const items = companyPayrollItemService.getPayItems(2026);
+  const item = items.find((pi) => pi.taxItemId === taxItemId);
+  if (!item) return null;
+  return {
+    itemId: item.id,
+    itemCode: item.taxItemId,
+    itemName: item.name,
+    amount,
+    category: item.taxItemCategory,
+    includeInAnnual,
+  };
+}
 
-  // 가중치: 패턴 1(일반)을 가장 많이 선택, 나머지는 골고루
-  const rand = Math.random();
-  if (rand < 0.5) return [...templates[0]!]; // 50% - 일반 사무직
-  if (rand < 0.65) return [...templates[1]!]; // 15% - 관리자급
-  if (rand < 0.75) return [...templates[2]!]; // 10% - 생산직
-  if (rand < 0.85) return [...templates[3]!]; // 10% - 연구직
-  if (rand < 0.90) return [...templates[4]!]; // 5% - 임원급
-  if (rand < 0.95) return [...templates[5]!]; // 5% - 계약직
-  return [...templates[6]!]; // 5% - 야간근무자
+// 랜덤 급여 템플릿 생성
+function getRandomPayrollTemplate(): { template: PayrollTemplateItem[]; annualSalary: number } {
+  const salary = 2000000 + Math.floor(Math.random() * 6000000); // 200만 ~ 800만
+  const meal = [100000, 150000, 200000][Math.floor(Math.random() * 3)]!; // 10만, 15만, 20만
+  const mealIncludeInAnnual = Math.random() < 0.5; // 50% 확률로 연봉 포함
+
+  const template: PayrollTemplateItem[] = [
+    makePayItem('taxable-2026-1', salary, true),
+    makePayItem('non-taxable-2026-P01', meal, mealIncludeInAnnual),
+  ].filter((item): item is PayrollTemplateItem => item !== null);
+
+  const annualSalary = template
+    .filter((item) => item.includeInAnnual)
+    .reduce((sum, item) => sum + item.amount * 12, 0);
+
+  return { template, annualSalary };
 }
 
 export async function seedEmployees(): Promise<void> {
@@ -382,8 +238,8 @@ export async function seedEmployees(): Promise<void> {
         }
       }
 
-      // 급여 템플릿 생성
-      const payrollTemplate = getRandomPayrollTemplate();
+      // 급여 템플릿 생성 (마지막 직원에게 Q01 출산보육수당 추가)
+      const { template: payrollTemplate, annualSalary } = getRandomPayrollTemplate();
 
       // 계좌정보 생성 (90% 확률로 생성)
       const hasAccount = Math.random() < 0.9;
@@ -406,6 +262,7 @@ export async function seedEmployees(): Promise<void> {
         employmentTypeId: employmentType.id,
         isDepartmentHead,
         payrollTemplate,
+        annualSalary,
         bankName: bank?.name || null,
         accountHolder: hasAccount ? name : null,
         accountNumber: accountNumber,

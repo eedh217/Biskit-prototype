@@ -98,9 +98,15 @@ export function InsuranceLossDetail(): JSX.Element {
     );
   }
 
-  const { workplace, employees, workplaceFaxNumber, agencyFaxNumber } = report.formData as { workplace: any; employees: EmployeeLossInfo[]; workplaceFaxNumber?: string; agencyFaxNumber?: string };
+  const { workplace, employees, workplaceFaxNumber, agencyFaxNumber, attachmentsMetadata } = report.formData as {
+    workplace: any;
+    employees: EmployeeLossInfo[];
+    workplaceFaxNumber?: string;
+    agencyFaxNumber?: string;
+    attachmentsMetadata?: { name: string; size: number }[][];
+  };
 
-  const renderEmployeeDetail = (employee: EmployeeLossInfo): JSX.Element => (
+  const renderEmployeeDetail = (employee: EmployeeLossInfo, employeeIndex: number): JSX.Element => (
     <Card className="flex-1 flex flex-col overflow-hidden">
       <CardContent className="pt-6 space-y-6 overflow-auto flex-1">
 
@@ -240,6 +246,24 @@ export function InsuranceLossDetail(): JSX.Element {
           </div>
         )}
 
+        {/* 첨부서류 */}
+        {attachmentsMetadata && attachmentsMetadata[employeeIndex] && attachmentsMetadata[employeeIndex].length > 0 && (
+          <div className="border-t pt-4">
+            <h4 className="font-medium mb-3">첨부서류</h4>
+            <div className="space-y-2">
+              {attachmentsMetadata[employeeIndex].map((file: { name: string; size: number }, fileIdx: number) => (
+                <div
+                  key={fileIdx}
+                  className="flex items-center justify-between p-2 border rounded-md bg-gray-50 cursor-pointer hover:bg-gray-100"
+                  onClick={() => window.open(window.location.href, '_blank')}
+                >
+                  <span className="text-sm text-blue-600 underline truncate">{file.name}</span>
+                  <span className="text-xs text-gray-400 shrink-0 ml-2">({(file.size / 1024).toFixed(0)}KB)</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -333,7 +357,7 @@ export function InsuranceLossDetail(): JSX.Element {
 
         {/* 우측 패널 */}
         <div className="flex-1 flex flex-col min-h-0">
-          {employees && employees[selectedEmployeeIndex] && renderEmployeeDetail(employees[selectedEmployeeIndex]!)}
+          {employees && employees[selectedEmployeeIndex] && renderEmployeeDetail(employees[selectedEmployeeIndex]!, selectedEmployeeIndex)}
         </div>
       </div>
     </div>

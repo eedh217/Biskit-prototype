@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { Card, CardContent } from '@/shared/components/ui/card';
 import { Trash2, Plus } from 'lucide-react';
 import { PageHeader } from '@/shared/components/common/PageHeader';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
-import { Card, CardContent } from '@/shared/components/ui/card';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
   Select,
@@ -64,6 +64,19 @@ const createDefaultEmployee = (): EmployeeDependentManagement => ({
 });
 
 export function DependentManagement(): JSX.Element {
+  const ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'];
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+  const MAX_FILES_PER_DEPENDENT = 5;
+
+  interface AttachmentItem {
+    name: string;
+    size: number;
+    file?: File;
+  }
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<AttachmentItem[][]>([[]]);
+
   const [_isComposing, setIsComposing] = useState(false);
   const [addressDialogOpen, setAddressDialogOpen] = useState(false);
   const [workplaceDialogOpen, setWorkplaceDialogOpen] = useState(false);
@@ -124,6 +137,12 @@ export function DependentManagement(): JSX.Element {
             setWorkplace(report.formData.workplace);
             if (report.formData.employees?.[0]) {
               setEmployee(report.formData.employees[0]);
+              const meta = (report.formData as { attachmentsMetadata?: { name: string; size: number }[][] }).attachmentsMetadata;
+              if (meta) {
+                setAttachments(meta);
+              } else {
+                setAttachments(report.formData.employees[0].dependents.map(() => []));
+              }
             }
             toast({ title: '작성중인 신고 데이터를 불러왔습니다.' });
             return;
@@ -168,7 +187,7 @@ export function DependentManagement(): JSX.Element {
 
   useEffect(() => {
     if (confirmDialogOpen) {
-      const savedFaxInfo = localStorage.getItem('biskit_insurance_fax_info');
+      const savedFaxInfo = localStorage.getItem('biskit_dependent_fax_info');
       if (savedFaxInfo) {
         const faxInfo = JSON.parse(savedFaxInfo);
         setWorkplaceFaxNumber(faxInfo.workplaceFaxNumber || '');
@@ -250,13 +269,57 @@ export function DependentManagement(): JSX.Element {
   // 피부양자 추가/삭제/변경
   const handleAddDependent = (): void => {
     setEmployee((prev) => ({ ...prev, dependents: [...prev.dependents, createDefaultDependent()] }));
+    setAttachments((prev) => [...prev, []]);
     setSelectedDependentIndex(employee.dependents.length);
   };
 
   const handleDeleteDependent = (index: number): void => {
     const newDependents = employee.dependents.filter((_, i) => i !== index);
     setEmployee((prev) => ({ ...prev, dependents: newDependents }));
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
     setSelectedDependentIndex(index >= newDependents.length ? newDependents.length - 1 : index);
+  };
+
+  const handleFileUpload = (depIndex: number, files: FileList | null): void => {
+    if (!files) return;
+    const currentFiles = attachments[depIndex] || [];
+    const newFiles: AttachmentItem[] = [];
+    let errorMsg = '';
+
+    Array.from(files).forEach((file) => {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        errorMsg = `${file.name}: 지원하지 않는 파일 형식입니다. (PDF, JPG, JPEG, PNG만 가능)`;
+        return;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        errorMsg = `${file.name}: 파일 크기가 5MB를 초과합니다.`;
+        return;
+      }
+      if (currentFiles.length + newFiles.length >= MAX_FILES_PER_DEPENDENT) {
+        errorMsg = `최대 ${MAX_FILES_PER_DEPENDENT}개까지 첨부 가능합니다.`;
+        return;
+      }
+      newFiles.push({ name: file.name, size: file.size, file });
+    });
+
+    if (errorMsg) toast({ title: errorMsg, variant: 'destructive' });
+    if (newFiles.length > 0) {
+      setAttachments((prev) => {
+        const updated = [...prev];
+        updated[depIndex] = [...(updated[depIndex] || []), ...newFiles];
+        return updated;
+      });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDeleteFile = (depIndex: number, fileIndex: number): void => {
+    setAttachments((prev) => {
+      const updated = [...prev];
+      updated[depIndex] = (updated[depIndex] || []).filter((_, i) => i !== fileIndex);
+      return updated;
+    });
   };
 
   const handleDependentChange = (
@@ -314,13 +377,16 @@ export function DependentManagement(): JSX.Element {
     }
     try {
       const now = new Date().toISOString();
+      const attachmentsMetadata = attachments.map((fileArr) =>
+        fileArr.map(({ name, size }) => ({ name, size }))
+      );
       const reportData = {
         reportDate: now,
         status: 'draft' as const,
         faxStatus: 'success' as const,
         employees: [{ employeeId: employee.employeeId || '', employeeName: employee.name, employeeNumber: employee.employeeNumber || '' }],
         dependents: employee.dependents.map((dep) => ({ dependentName: dep.name })),
-        formData: { workplace, employees: [employee] },
+        formData: { workplace, employees: [employee], attachmentsMetadata },
       };
 
       if (reportId) {
@@ -350,13 +416,16 @@ export function DependentManagement(): JSX.Element {
   const handleConfirmSubmit = async (): Promise<void> => {
     try {
       const now = new Date().toISOString();
+      const attachmentsMetadata = attachments.map((fileArr) =>
+        fileArr.map(({ name, size }) => ({ name, size }))
+      );
       const reportData = {
         reportDate: now,
         status: 'completed' as const,
         faxStatus: 'success' as const,
         employees: [{ employeeId: employee.employeeId || '', employeeName: employee.name, employeeNumber: employee.employeeNumber || '' }],
         dependents: employee.dependents.map((dep) => ({ dependentName: dep.name })),
-        formData: { workplace, employees: [employee], workplaceFaxNumber, agencyFaxNumber: faxNumber },
+        formData: { workplace, employees: [employee], workplaceFaxNumber, agencyFaxNumber: faxNumber, attachmentsMetadata },
       };
 
       let completedReport;
@@ -368,15 +437,14 @@ export function DependentManagement(): JSX.Element {
       }
 
       saveWorkplaceInfo(workplace);
-      localStorage.setItem('biskit_insurance_fax_info', JSON.stringify({ workplaceFaxNumber, agencyFaxNumber: faxNumber }));
+      localStorage.setItem('biskit_dependent_fax_info', JSON.stringify({ workplaceFaxNumber, agencyFaxNumber: faxNumber }));
 
       toast({ title: '피부양자 관리 신고가 완료되었습니다.' });
       setConfirmDialogOpen(false);
 
       setNavigationGuard(null);
-      window.history.pushState({}, '', '/hr/insurance/dependent');
+      window.history.pushState({}, '', `/hr/insurance/dependent/detail/${completedReport.id}`);
       window.dispatchEvent(new PopStateEvent('popstate'));
-      void completedReport;
     } catch {
       toast({ title: '신고에 실패했습니다.', variant: 'destructive' });
     }
@@ -683,6 +751,52 @@ export function DependentManagement(): JSX.Element {
                   )}
                 </div>
 
+                {/* 첨부서류 */}
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium">첨부서류</h4>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={(attachments[selectedDependentIndex] || []).length >= MAX_FILES_PER_DEPENDENT}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      파일 추가
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-3">
+                    PDF, JPG, JPEG, PNG · 파일당 최대 5MB · 최대 5개
+                  </p>
+                  {(attachments[selectedDependentIndex] || []).length > 0 ? (
+                    <div className="space-y-2">
+                      {(attachments[selectedDependentIndex] || []).map((item, fileIdx) => (
+                        <div key={fileIdx} className={`flex items-center justify-between p-2 border rounded-md ${item.file ? 'bg-gray-50' : 'bg-amber-50 border-amber-200'}`}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm truncate">{item.name}</span>
+                            <span className="text-xs text-gray-400 shrink-0">({(item.size / 1024).toFixed(0)}KB)</span>
+                            {!item.file && <span className="text-xs text-amber-600 shrink-0">재첨부 필요</span>}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 shrink-0 ml-2"
+                            onClick={() => handleDeleteFile(selectedDependentIndex, fileIdx)}
+                          >
+                            <Trash2 className="h-4 w-4 text-gray-400" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="border border-dashed rounded-md p-4 text-center text-sm text-gray-400">
+                      첨부된 파일이 없습니다.
+                    </div>
+                  )}
+                </div>
+
               </CardContent>
             </Card>
           ) : (
@@ -692,6 +806,16 @@ export function DependentManagement(): JSX.Element {
           )}
         </div>
       </div>
+
+      {/* 파일 입력 (숨김) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.jpg,.jpeg,.png"
+        multiple
+        onChange={(e) => handleFileUpload(selectedDependentIndex, e.target.files)}
+      />
 
       {/* 하단 버튼 영역 */}
       <div className="fixed bottom-0 left-[305px] right-0 z-10">
@@ -872,7 +996,7 @@ export function DependentManagement(): JSX.Element {
                 className="text-sm"
               />
               <p className="text-xs text-gray-600">
-                사업장 주소에 맞춰 공단 FAX 번호를 입력해주세요. 1개의 공단 FAX 번호만 입력해주시면 됩니다.
+                사업장 주소에 맞춰 건강보험공단 FAX 번호를 입력해주세요.
               </p>
             </div>
           </div>

@@ -173,6 +173,7 @@ export function AllBusinessIncome(): JSX.Element {
           showBackButton={false}
         />
 
+        {/* 검색영역 + 액션 버튼 */}
         <div className="flex items-center gap-2 mb-4">
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -194,14 +195,7 @@ export function AllBusinessIncome(): JSX.Element {
           >
             검색
           </Button>
-        </div>
-
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">{data?.total ?? 0}개</span>
-          </div>
-
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <Button
               variant="destructive"
               onClick={handleDeleteSelected}
@@ -220,6 +214,9 @@ export function AllBusinessIncome(): JSX.Element {
           data={data?.data ?? []}
           onRowClick={handleRowClick}
           pageSize={30}
+          rowSelection={selectedRows}
+          getRowId={(row) => row.id}
+          rowLabel="건"
         />
       </div>
     </>

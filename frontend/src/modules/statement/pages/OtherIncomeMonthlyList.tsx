@@ -141,6 +141,11 @@ export function OtherIncomeMonthlyList(): JSX.Element {
     [selectedIds]
   );
 
+  const rowSelectionState = useMemo(
+    () => Object.fromEntries(selectedIds.map((id) => [id, true])),
+    [selectedIds]
+  );
+
   const handleDeleteSelected = (): void => {
     if (selectedIds.length === 0) return;
 
@@ -373,7 +378,13 @@ export function OtherIncomeMonthlyList(): JSX.Element {
         </div>
       </div>
 
-      {/* 검색 영역 */}
+      {/* 안내 문구 */}
+      <div className="mb-4 text-sm text-gray-600">
+        ※ 간이지급명세서 신고 후 데이터가 수정되거나 추가된 대상자는 좌측
+        체크박스에서 체크 후 간이지급명세서 개별 생성을 진행해주세요.
+      </div>
+
+      {/* 검색 영역 + 액션 버튼 */}
       <div className="flex items-center gap-2 mb-4">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -394,21 +405,7 @@ export function OtherIncomeMonthlyList(): JSX.Element {
         >
           검색
         </Button>
-      </div>
-
-      {/* 안내 문구 */}
-      <div className="mb-2 text-sm text-gray-600">
-        ※ 간이지급명세서 신고 후 데이터가 수정되거나 추가된 대상자는 좌측
-        체크박스에서 체크 후 간이지급명세서 개별 생성을 진행해주세요.
-      </div>
-
-      {/* 액션 버튼 및 리스트 개수 */}
-      <div className="flex justify-between items-center mb-4">
-        {/* 왼쪽: 리스트 개수 */}
-        <div className="text-sm font-medium">총 {data?.total ?? 0}건</div>
-
-        {/* 오른쪽: 버튼들 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto">
           <Button
             variant="destructive"
             onClick={handleDeleteSelected}
@@ -436,6 +433,9 @@ export function OtherIncomeMonthlyList(): JSX.Element {
         data={data?.data ?? []}
         onRowClick={handleRowClick}
         pageSize={30}
+        rowSelection={rowSelectionState}
+        getRowId={(row) => row.id}
+        rowLabel="건"
       />
 
       {/* 기타소득 추가 팝업 */}

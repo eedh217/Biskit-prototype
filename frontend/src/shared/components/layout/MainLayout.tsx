@@ -13,6 +13,7 @@ interface MainLayoutProps {
   children: ReactNode;
   currentPath: string;
   onNavigate: (path: string) => void;
+  fullWidth?: boolean;
 }
 
 // 간이지급명세서 메뉴 구조
@@ -139,13 +140,19 @@ const PAYROLL_MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'payroll-items',
-    label: '급여항목',
+    label: '급여항목 관리',
     path: '/payroll/items',
+    children: [],
+  },
+  {
+    id: 'payroll-salary-contract',
+    label: '급여계약 관리',
+    path: '/payroll/salary-contract',
     children: [],
   },
 ];
 
-export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProps): JSX.Element {
+export function MainLayout({ children, currentPath, onNavigate, fullWidth = false }: MainLayoutProps): JSX.Element {
   const [selectedModule, setSelectedModule] = useState<string>('statement');
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -216,7 +223,7 @@ export function MainLayout({ children, currentPath, onNavigate }: MainLayoutProp
 
       {/* 메인 콘텐츠 영역 */}
       <main ref={mainRef} className="flex-1 overflow-auto bg-white">
-        <div className="mx-auto max-w-[1500px] px-6 py-6">
+        <div className={fullWidth ? 'pt-6 h-full flex flex-col' : 'mx-auto max-w-[1500px] px-6 py-6'}>
           {children}
         </div>
       </main>
